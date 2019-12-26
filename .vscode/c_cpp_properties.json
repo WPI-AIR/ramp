@@ -1,0 +1,34 @@
+{
+    "configurations": [
+        {
+            "browse": {
+                "databaseFilename": "",
+                "limitSymbolsToIncludedHeaders": true
+            },
+            "includePath": [
+                "/home/sapanostic/ambf/build/devel/include/**",
+                "/home/sapanostic/catkin_ws/devel/include/**",
+                "/opt/ros/kinetic/include/**",
+                "/home/sapanostic/ambf/ambf_ros_modules/ambf_comm/include/**",
+                "/home/sapanostic/catkin_ws/src/vision_opencv/cv_bridge/include/**",
+                "/home/sapanostic/ambf/ambf_ros_modules/dvrk_arm/include/**",
+                "/home/sapanostic/catkin_ws/src/vision_opencv/image_geometry/include/**",
+                "/home/sapanostic/catkin_ws/src/laser_filters/include/**",
+                "/home/sapanostic/catkin_ws/src/line_follower_turtlebot/include/**",
+                "/home/sapanostic/catkin_ws/src/ramp-hilbert_map/path_modification/include/**",
+                "/home/sapanostic/catkin_ws/src/ramp-hilbert_map/ramp_control/include/**",
+                "/home/sapanostic/catkin_ws/src/ramp-hilbert_map/ramp_debug/include/**",
+                "/home/sapanostic/catkin_ws/src/ramp-hilbert_map/ramp_planner/include/**",
+                "/home/sapanostic/catkin_ws/src/ramp-hilbert_map/ramp_sensing/include/**",
+                "/home/sapanostic/catkin_ws/src/ramp-hilbert_map/trajectory_evaluation/include/**",
+                "/home/sapanostic/catkin_ws/src/ramp-hilbert_map/trajectory_generator/include/**",
+                "/home/sapanostic/catkin_ws/src/ramp-hilbert_map/trajectory_visualisation/include/**",
+                "/home/sapanostic/catkin_ws/src/Turtlebot-Walker/include/**",
+                "/usr/include/**"
+            ],
+            "name": "ROS",
+            "compilerPath": "/usr/bin/gcc"
+        }
+    ],
+    "version": 4
+}
