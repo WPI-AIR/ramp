@@ -8,10 +8,8 @@ McLeod, Sterling, and Jing Xiao. "Real-time adaptive non-holonomic motion planni
 ## To Run 
 ```
 roscore
-roslaunch ramp_launch planner_parameters.launch
-rosrun ramp_planner pub_map_odom
-roslaunch gazebo_costmap.launch 
-roslaunch ramp_launch ramp_launch planner_full_costmap_simulation.launch 
+roslaunch ramp_launch gazebo_costmap.launch 
+roslaunch ramp_launch planner_full_costmap_simulation.launch 
 cd catkin_ws/src/RAMP_Gazebo/ramp_launch/
 rosrun rviz rviz -d robot_costmap.rviz
 ```
