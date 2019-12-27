@@ -21,8 +21,8 @@ In the planner terminal, the planner is waiting for the sensing module to get re
 Waiting for Hilbert Map
 `rosrun ramp_sensing load_occ_map.py`
 
-Press `Enter` for the planner to being first iteration.  
-Press `Enter` for the planner to being remainging iteration.
+Press `Enter` for the planner to begin first iteration.  
+Press `Enter` for the planner to begin remainging iteration.
 
 Publish random value on /combined_map topic.
 ```
