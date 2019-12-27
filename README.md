@@ -5,6 +5,8 @@ This is a ROS metapackage for Real-time Adaptive Motion Planning algorithm origi
 
 McLeod, Sterling, and Jing Xiao. "Real-time adaptive non-holonomic motion planning in unforeseen dynamic environments." 2016 IEEE/RSJ International Conference on Intelligent Robots and Systems (IROS). IEEE, 2016.
 
+![](/results/ramp_go_to_goal.gif)
+
 ## To Run 
 ```
 roscore
