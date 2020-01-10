@@ -127,7 +127,7 @@ void MobileRobot::updateTrajectory(const ramp_msgs::RampTrajectory& msg)
 {
   //ROS_INFO("Time since last trajectory: %f", (ros::Time::now() - t_prev_traj_).toSec());
   t_prev_traj_ = ros::Time::now();
-  //ROS_INFO("Received RampTrajectory, size: %i", (int)msg.trajectory.points.size());
+  //ROS_INFO("Received RampTrajectory");
   //ROS_INFO("Trajectory: %s", utility_.toString(msg).c_str());
   
   /*double sum = 0;
@@ -157,7 +157,6 @@ void MobileRobot::updateTrajectory(const ramp_msgs::RampTrajectory& msg)
     sendTwist();
     sendTwist();
     sendTwist();
-    num_traveled_ = num_;
   }
 
   //if(trajectory_.trajectory.points.size() > 2)

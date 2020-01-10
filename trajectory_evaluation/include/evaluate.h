@@ -49,13 +49,11 @@ class Evaluate {
     double T_weight_;
     double A_weight_;
     double D_weight_;
-    double P_weight_;
 
     std::vector< ros::Duration > t_analy_;
     std::vector< ros::Duration > t_numeric_;
 
-    nav_msgs::OccupancyGrid hmap_;
-    nav_msgs::OccupancyGrid combinedGrid_;
+    ramp_msgs::HilbertMap hmap_;
   private:
     Utility utility_;
     bool orientation_infeasible_;

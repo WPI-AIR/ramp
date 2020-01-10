@@ -24,11 +24,8 @@ bool                only_sensing;
 bool                moving_robot;
 bool                shrink_ranges;
 bool                stop_after_ppcs;
-bool                show_full_traj;
-bool                try_ic_loop;
 double              t_cc_rate;
 double              t_sc_rate;
-double              T_weight, A_weight, D_weight;
 int                 pop_type;
 TrajectoryType      pt;
 std::vector<std::string> ob_topics;
@@ -182,11 +179,6 @@ void loadParameters(const ros::NodeHandle handle)
     ROS_ERROR("Did not find robot_info/max_speed_linear rosparam");
     exit(1);
   }
-  
-  // Get the evaluation weights
-  handle.getParam("/ramp/eval_weight_T", T_weight);
-  handle.getParam("/ramp/eval_weight_D", D_weight);
-  handle.getParam("/ramp/eval_weight_A", A_weight);
 
   if(handle.hasParam("robot_info/max_speed_angular"))
   {
@@ -336,28 +328,12 @@ void loadParameters(const ros::NodeHandle handle)
         break;
     }
   }
-
-  if(handle.hasParam("ramp/show_full_traj"))
-  {
-    handle.getParam("ramp/show_full_traj", show_full_traj);
-    ROS_INFO("show_full_traj: %s", show_full_traj ? "True" : "False");
-  }
   
-
-
   if(handle.hasParam("ramp/error_reduction")) 
   {
     handle.getParam("ramp/error_reduction", errorReduction);
     //ROS_INFO("errorReduction: %s", errorReduction ? "True" : "False");
   }
-
-
-  if(handle.hasParam("ramp/try_ic_loop")) 
-  {
-    handle.getParam("ramp/try_ic_loop", try_ic_loop);
-  }
-
-
 
 
   std::cout<<"\n------- Done loading parameters -------\n";
@@ -440,8 +416,8 @@ void pubStartGoalMarkers()
   goal_marker.color.a = 1;
 
   // Set lifetimes
-  start_marker.lifetime = ros::Duration(120.0);
-  goal_marker.lifetime = ros::Duration(120.0);
+  start_marker.lifetime = ros::Duration(10.0);
+  goal_marker.lifetime = ros::Duration(10.0);
 
   // Create marker array and publish
   result.markers.push_back(start_marker);
@@ -497,9 +473,7 @@ int main(int argc, char** argv)
   }
   ros::Subscriber sub_updateVel_  = handle.subscribe("update", 1, &Planner::updateCbControlNode, &my_planner);
   ros::Subscriber sub_sc_         = handle.subscribe("obstacles", 1, &Planner::sensingCycleCallback, &my_planner);
-  //ros::Subscriber sub_hmap        = handle.subscribe("hmap_obstacles", 1, &Planner::hilbertMapObsCb, &my_planner);
-  ros::Subscriber sub_hmap        = handle.subscribe("hilbert_map_grid", 1, &Planner::hilbertMapObsCb, &my_planner);
-  ros::Subscriber sub_combined    = handle.subscribe("combined_map", 1, &Planner::combinedMapCb, &my_planner);
+  ros::Subscriber sub_hmap        = handle.subscribe("hmap_obstacles", 1, &Planner::hilbertMapObsCb, &my_planner);
   ROS_INFO("Done initializing Subscribers");
 
   pub_rviz = handle.advertise<visualization_msgs::MarkerArray>("visualization_marker_array", 10);
@@ -562,7 +536,7 @@ int main(int argc, char** argv)
    */
  
   // Initialize the planner
-  my_planner.init(id, handle, start, goal, ranges, max_speed_linear, max_speed_angular, population_size, radius, sub_populations, global_frame, update_topic, pt, num_ppcs, stop_after_ppcs, sensingBeforeCC, t_sc_rate, t_cc_rate, only_sensing, moving_robot, errorReduction, try_ic_loop, T_weight, A_weight, D_weight, show_full_traj);
+  my_planner.init(id, handle, start, goal, ranges, max_speed_linear, max_speed_angular, population_size, radius, sub_populations, global_frame, update_topic, pt, num_ppcs, stop_after_ppcs, sensingBeforeCC, t_sc_rate, t_cc_rate, only_sensing, moving_robot, errorReduction); 
   my_planner.modifications_   = modifications;
   my_planner.evaluations_     = evaluations;
   my_planner.seedPopulation_  = seedPopulation;
@@ -587,7 +561,6 @@ int main(int argc, char** argv)
   bool sensingReady = false;
   while(sensingReady == false && ros::ok())
   {
-    //ROS_INFO("In while");
     handle.param("/ramp/sensing_ready", sensingReady, false);
     ros::spinOnce();
     r.sleep();

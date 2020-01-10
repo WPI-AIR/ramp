@@ -110,7 +110,6 @@ class Planner {
     void planningCycles(int num);
     void go();
     void goTest(float sec=-1);
-    void resetForSLTest();
     
     // Initialization 
     void initPopulation();
@@ -135,12 +134,7 @@ class Planner {
               const double              t_fixed_cc=2.,
               const bool                only_sensing=0,
               const bool                moving_robot=1,
-              const bool                errorReduction=0,
-              const bool                try_ic_loop=0,
-              const double              T_weight=0,
-              const double              A_weight=0,
-              const double              D_weight=0,
-              bool                      show_full_traj=0);
+              const bool                errorReduction=0);
     
     // Send the best trajectory to the control package
     void sendBest();
@@ -224,9 +218,8 @@ class Planner {
 
     const ramp_msgs::BezierCurve               handleCurveEnd(const RampTrajectory traj) const;
     
-    void deleteDuplicateKnotPoints(Path& p);
 
-    void adaptCurves     (const MotionState& ms, const ros::Duration& d, std::vector<ramp_msgs::BezierCurve>& result, std::vector<Path> adaptedPaths);
+    void adaptCurves     (const MotionState& ms, const ros::Duration& d, std::vector<ramp_msgs::BezierCurve>& result);
     void adaptPaths      (const MotionState& ms, const ros::Duration& d, std::vector<Path>& result);
     void adaptPopulation (const MotionState& ms, const ros::Duration& d);
 
@@ -251,10 +244,9 @@ class Planner {
     void sensingCycleCallback     (const ramp_msgs::ObstacleList& msg);
     void updateCbPose(const geometry_msgs::PoseWithCovarianceStamped msg);
     void updateCbControlNode(const ramp_msgs::MotionState& msg);
-    void combinedMapCb(const nav_msgs::OccupancyGrid msg);
 
 
-    void hilbertMapObsCb(const nav_msgs::OccupancyGrid& hmapObs);
+    void hilbertMapObsCb(const ramp_msgs::ObstacleList& hmapObs);
 
 
     /** Data */
@@ -367,10 +359,10 @@ class Planner {
 
 
     // Work for CC
-    void doControlCycle(bool sendBestTraj=true);
+    void doControlCycle();
 
     // Returns the index in the trajectory's path to start checking if the robot has passed it
-    const uint8_t getIndexStartPathAdapting(const RampTrajectory& t) const;
+    const uint8_t getIndexStartPathAdapting(const RampTrajectory t) const;
 
 
     // Returns true if motion state satisfies constraints to be a knot point in Path p 
@@ -541,7 +533,6 @@ class Planner {
     int i_prevBest_;
     
     
-    bool show_full_traj_;
     
     /*
      * Vectors to hold recorded data
@@ -558,12 +549,6 @@ class Planner {
 
     bool forceMinMod_;
     bool evalHMap_;
-    bool tryICLoop_;
-    bool combinedMapReceived_;
-
-    double T_weight_;
-    double A_weight_;
-    double D_weight_;
 
     /*
      * General data
@@ -595,7 +580,6 @@ class Planner {
     std::ofstream f_num_ccs_;
     std::ofstream f_num_switches_;
     std::ofstream f_pop_size_;
-    std::ofstream f_eval_weights_;
     std::ofstream f_compute_switch_all_ts_;
     std::ofstream f_switch_t_size_;
     std::ofstream f_trajec_size_;

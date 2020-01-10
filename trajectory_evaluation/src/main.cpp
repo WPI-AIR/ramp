@@ -5,9 +5,7 @@
 #include "evaluate.h"
 #include "tf/transform_datatypes.h"
 #include "ramp_msgs/Obstacle.h"
-#include "ramp_msgs/Range.h"
 #include <ros/package.h>
-#include <nav_msgs/OccupancyGrid.h>
 using namespace std::chrono;
 
 Evaluate ev;
@@ -18,7 +16,7 @@ std::vector<double> durs;
 int count_multiple = 0;
 int count_single = 0;
 
-double T_weight, D_weight, A_weight, P_weight;
+double T_weight, D_weight, A_weight;
 std::vector<double> dof_min, dof_max;
 
 /** Srv callback to evaluate a trajectory */
@@ -46,7 +44,7 @@ bool handleRequest(ramp_msgs::EvaluationSrv::Request& reqs,
 
     ramp_msgs::EvaluationResponse res;
     //ROS_INFO("Robot Evaluating trajectory %i: %s", (int)i, u.toString(reqs.reqs[i].trajectory).c_str());
-    //ROS_INFO("Obstacle size: %i", (int)reqs.reqs[i].obstacle_trjs.size());
+    ////////ROS_INFO("Obstacle size: %i", (int)reqs.reqs[i].obstacle_trjs.size());
     //ROS_INFO("imminent_collision: %s", reqs.reqs[i].imminent_collision ? "True" : "False");
     //ROS_INFO("currentTheta: %f", reqs.reqs[i].currentTheta);
     //ROS_INFO("robot_r: %f consider_trans: %s trans_possible: %s hmap: %s", reqs.reqs[i].robot_radius, reqs.reqs[i].consider_trans ? "True" : "False", reqs.reqs[i].trans_possible ? "True" : "False", reqs.reqs[i].hmap_eval ? "True" : "False");
@@ -81,17 +79,13 @@ bool handleRequest(ramp_msgs::EvaluationSrv::Request& reqs,
 
 
 
-void hMapCb(const nav_msgs::OccupancyGrid& hmap)
+void hMapCb(const ramp_msgs::HilbertMap& hmap)
 {
   ev.hmap_ = hmap;
 }
 
 
 
-void combinedGridCb(const nav_msgs::OccupancyGrid& grid)
-{
-  ev.combinedGrid_ = grid;
-}
 
 
 
@@ -270,7 +264,6 @@ int main(int argc, char** argv) {
   handle.getParam("/ramp/eval_weight_T", T_weight);
   handle.getParam("/ramp/eval_weight_D", D_weight);
   handle.getParam("/ramp/eval_weight_A", A_weight);
-  handle.getParam("/ramp/eval_weight_P", P_weight);
   handle.getParam("/robot_info/DOF_min", dof_min);
   handle.getParam("/robot_info/DOF_max", dof_max);
 
@@ -278,28 +271,17 @@ int main(int argc, char** argv) {
   ev.T_weight_ = T_weight;
   ev.D_weight_ = D_weight;
   ev.A_weight_ = A_weight;
-  ev.P_weight_ = P_weight;
 
   // Set normalization for minimum distance to the area of the environment
   ev.D_norm_ = (dof_max[0] - dof_min[0]) * (dof_max[1] - dof_min[1]);
   //ROS_INFO("ev.D_norm_: %f", ev.D_norm_);
 
-  // Make Ranges for collision detection module
-  for(int i=0;i<dof_min.size();i++)
-  {
-    ramp_msgs::Range temp;
-    temp.min = dof_min[i];
-    temp.max = dof_max[i];
-
-    ev.cd_.ranges_.push_back(temp);
-  }
  
   // Advertise Service
   ros::ServiceServer service = handle.advertiseService("trajectory_evaluation", handleRequest);
   
   // Subscribe to hilbert map
-  ros::Subscriber sub_hmap = handle.subscribe("hilbert_map_grid", 1, &hMapCb);
-  ros::Subscriber sub_combinedMap = handle.subscribe("combined_map", 1, &combinedGridCb);
+  ros::Subscriber sub_hmap = handle.subscribe("hilbert_map", 1, &hMapCb);
 
 
   /*

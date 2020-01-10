@@ -22,16 +22,24 @@ std::vector<double> durs;
 bool handleRequest(ramp_msgs::ModificationRequest::Request& req,
                    ramp_msgs::ModificationRequest::Response& res)
 {
-  //ROS_INFO("Operator: %s", req.op.c_str());
+  /*std::cout<<"\npath_modification: In handleRequest\n";
+
+  std::cout<<"\nNumber of paths received: "<<req.paths.size();
+  std::cout<<"\nPaths received:";
+  for(unsigned int i=0;i<req.paths.size();i++) {
+    std::cout<<"\n"<<u.toString(req.paths.at(i));
+  }
+  ROS_INFO("Operator: %s", req.op.c_str());*/
 
   high_resolution_clock::time_point tStart = high_resolution_clock::now();
 
-  Modifier mod(req, ranges);
+  Modifier mod(req);
 
-  // Set utility members
+  // Set the ranges
+  // do this in a better way eventually...
   mod.in_.utility_ = u; 
   mod.chg_.utility_ = u;
-  mod.repair_.utility_ = u;
+  //mod.repair_.utility_ = u;
   
   /*ROS_INFO("Path modification ranges: ");
   for(int i=0;i<u.standardRanges_.size();i++)

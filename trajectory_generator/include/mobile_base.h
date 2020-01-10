@@ -70,8 +70,6 @@ private:
   double MAX_SPEED_LINEAR;
   double MAX_SPEED_ANGULAR;
 
-  double max_acc_;
-
   const uint8_t i_XDOF_;
   const uint8_t i_THETADOF_;
 

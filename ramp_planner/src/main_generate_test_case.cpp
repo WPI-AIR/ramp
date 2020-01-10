@@ -29,6 +29,7 @@ ros::Publisher pub_obs;
 
 std::vector<int> ob_delay;
 
+
 /*
  * Data to collect
  */
@@ -37,9 +38,6 @@ std::vector<RampTrajectory> bestTrajec_at_end;
 int num_IC;
 bool IC_occur;
 bool IC_current;
-bool collAmongObs;
-std::vector<bool> colls;
-std::vector<bool> icAtColl;
 MotionState latestUpdate;
 
 
@@ -288,6 +286,7 @@ struct ABTC
 {
   bool moving[9];
   double times[9];
+  
 };
 
 
@@ -323,50 +322,6 @@ struct TestCaseTwo {
   std::vector<ramp_msgs::RampTrajectory> ob_trjs;
   ros::Time t_begin;
 };
-
-
-
-
-struct ObInfoExt
-{
-  // Position details
-  double x;
-  double y;
-  double relative_direction;
-  double d;
-  
-  // Linear speed
-  double v_i;
-  double v_f;
-
-  // Angular speed
-  double w;
-
-  // Durations
-  ros::Duration d_s;
-  ros::Duration d_vi;
-  ros::Duration d_vf;
-  
-  ramp_msgs::Obstacle msg;
-  
-  bool faster;
-};
-
-struct TestCaseExt
-{
-  ABTC abtc;
-  std::vector<ObInfoExt> obs;
-  ramp_msgs::ObstacleList ob_list;
-  std::vector<ramp_msgs::RampTrajectory> ob_trjs;
-  ros::Time t_begin;
-
-  ros::Duration d_states;
-  // Ext portion
-};
-
-
-TestCaseExt globalTc;
-
 
 ramp_msgs::Obstacle getStaticOb(ramp_msgs::Obstacle ob)
 {
@@ -426,59 +381,6 @@ std::vector<double> getPos()
 }
 
 
-// Generate an obstacle with all of its data filled in
-ObInfoExt generateObInfoGridExt(const MotionState robot_state)
-{
-  ObInfoExt result;
-
-  Range x(0.5, 2.0);
-  Range y(0.5, 2.0);
-
-  double ob_x = x.random();
-  
-  // Round to 1 decimal place for grid of .1m x .1m
-  ob_x *= 10;
-  ob_x = round(ob_x);
-  ob_x /= 10;
-
-  double ob_y = y.random();
-  
-  // Round to 1 decimal place for grid of .1m x .1m
-  ob_y *= 10;
-  ob_y = round(ob_y);
-  ob_y /= 10;
-
-  // Relative direction depends on x and y
-  result.relative_direction = utility.displaceAngle(atan( ob_y / ob_x ), PI);
-
-  
-  // Set speeds
-  Range v(0, 0.5);
-  Range w(-PI/2.f, PI/2.f);
-
-  result.x = ob_x;
-  result.y = ob_y;
-
-  result.v_i  = v.random();
-  result.v_f  = v.random();
-  result.w    = w.random();
-
-
-  // Set durations
-  // ***
-  Range durs(0,5);
-  result.d_s = ros::Duration(durs.random());
-  //result.d_vi = ros::Duration(durs.random());
-  //result.d_vf = ros::Duration(durs.random());
-
-  //ROS_INFO("Test case v_i: %f v_f: %f d_s: %f d_vi: %f d_vf: %f", result.v_i, result.v_f, result.d_s.toSec(), result.d_vi.toSec(), result.d_vf.toSec());
-  
-  
-  return result;
-}
-
-
-
 ObInfo generateObInfoGrid(const MotionState robot_state)
 {
   ObInfo result;
@@ -520,7 +422,7 @@ ObInfo generateObInfo(const MotionState robot_state)
 
   Range dist(0, 3.5);
 
-  Range v       (0, 0.5);
+  Range v(0, 0.5);
   Range w       (0      ,  PI/2.f);
   Range rela_dir(PI/6.f ,  5.f*PI/6.f);
   
@@ -560,7 +462,7 @@ ObInfo generateObInfo(const MotionState robot_state)
  */
 const ramp_msgs::Obstacle buildObstacleMsg(const double& p_x, const double& p_y, const double& v_mag, const double& v_direction, const double& w)
 {
-  //ROS_INFO("p_x: %f p_y: %f, v_mag: %f v_direction: %f w: %f", p_x, p_y, v_mag, v_direction, w);
+  ROS_INFO("p_x: %f p_y: %f, v_mag: %f v_direction: %f w: %f", p_x, p_y, v_mag, v_direction, w);
 
   ramp_msgs::Obstacle result;
 
@@ -580,10 +482,6 @@ const ramp_msgs::Obstacle buildObstacleMsg(const double& p_x, const double& p_y,
   result.ob_ms.velocities.push_back(v_mag*cos(v_direction));
   result.ob_ms.velocities.push_back(v_mag*sin(v_direction));
   result.ob_ms.velocities.push_back(w);
-
-  // Add in obstacle radius
-  result.cirGroup.fitCir.radius = 0.21;
-  result.cirGroup.packedCirs.push_back(result.cirGroup.fitCir);
 
   return result;
 }
@@ -684,120 +582,9 @@ TestCaseTwo generateTestCase(const MotionState robot_state, int num_obs)
 }
 
 
-
-
-
-/*
- * Does NOT generate an ABTC
- * Put that in later on once single test case is working well
- */
-TestCaseExt generateTestCaseExt(const MotionState robot_state, int num_obs)
-{
-  TestCaseExt result;
-
-  //ROS_INFO("In generateTestCaseExt");
-  //ROS_INFO("num_obs: %i", num_obs);
-  
-  double obInitD = 0.75;
-
-  // Get the random duration for state changes
-  Range r(2, 5);
-  result.d_states = ros::Duration( r.random() );
-  ROS_INFO("d_states: %f", result.d_states.toSec());
-
-  // Generate all obstacles and push them onto test case
-  for(int i=0;i<num_obs;i++)
-  {
-    ObInfoExt temp = generateObInfoGridExt(robot_state);
-
-    if(i == 1)
-    {
-      // Get position distance from other obstacle
-      std::vector<double> one, two;
-      one.push_back(result.obs[0].x);
-      one.push_back(result.obs[0].y);
-      two.push_back(temp.x);
-      two.push_back(temp.y);
-      double dist = utility.positionDistance(one, two);
-      while(dist < obInitD) 
-      {
-        //ROS_INFO("one: (%f, %f) temp: (%f, %f)", one[0], one[1], two[0], two[1]);
-        
-        temp = generateObInfoGridExt(robot_state);
-        two[0] = temp.x;
-        two[1] = temp.y;
-        dist = utility.positionDistance(one, two);
-      }
-
-    }
-    else if (i == 2)
-    {
-      // Get position distance from other two obstacles
-      std::vector<double> one, two, three;
-      one.push_back(result.obs[0].x);
-      one.push_back(result.obs[0].y);
-      two.push_back(result.obs[1].x);
-      two.push_back(result.obs[1].y);
-      three.push_back(temp.x);
-      three.push_back(temp.y);
-      double dist1 = utility.positionDistance(one, three);
-      double dist2 = utility.positionDistance(two, three);
-      while(dist1 < obInitD || dist2 < obInitD)
-      {
-        //ROS_INFO("one: (%f, %f) two:(%f, %f) temp: (%f, %f)", one[0], one[1], two[0], two[1], three[0], three[1]);
-        temp = generateObInfoGridExt(robot_state);
-        three[0] = temp.x;
-        three[1] = temp.y;
-        dist1 = utility.positionDistance(one, three);
-        dist2 = utility.positionDistance(two, three);
-      }
-    }
-
-    // What is this used for?
-    temp.msg = buildObstacleMsg(temp.x, temp.y, temp.v_i, temp.relative_direction, temp.w);
-
-    result.obs.push_back(temp);
-    result.ob_list.obstacles.push_back(temp.msg);
-    //ROS_INFO("result.obs.size(): %i", (int)result.obs.size());
-    //ROS_INFO("result.ob_list.obstacles.size(): %i", (int)result.ob_list.obstacles.size());
-  }
-
-
-  /*
-   ********************************************************************
-   *    Manually set the initial delay values to control the ABTC! 
-   ********************************************************************
-   */
-  // 0
-  double d_initialDelay = 0;
-  ROS_INFO("Initial delay: %f", d_initialDelay);
-  
-  // 1 (1 after previous obstacle)
-  Range r_secondDelay(result.d_states.toSec()*0.0, result.d_states.toSec()*0.9);
-  double d_secondDelay = r_secondDelay.random();
-  ROS_INFO("Second delay: %f total: %f", d_secondDelay, d_initialDelay + d_secondDelay);
-
-  // 3 (2 after previous obstacle)
-  Range r_thirdDelay(result.d_states.toSec()*1.0, result.d_states.toSec()*1.9);
-  double d_thirdDelay = r_thirdDelay.random();
-  ROS_INFO("Third delay: %f total: %f", d_thirdDelay, d_initialDelay + d_secondDelay + d_thirdDelay);
-  
-
-  // Set all of them
-  result.obs[0].d_s = ros::Duration(d_initialDelay);
-  result.obs[1].d_s = ros::Duration(d_initialDelay + d_secondDelay);
-  result.obs[2].d_s = ros::Duration(d_initialDelay + d_secondDelay + d_thirdDelay);
- 
-
-  return result;
-}
-
-
-
-
 MotionState getGoal(const MotionState init, const double dim)
 {
-  //ROS_INFO("getGoal init: %s", init.toString().c_str());
+  ROS_INFO("getGoal init: %s", init.toString().c_str());
 
   double r = sqrt( pow(dim,2) * 2 );
   double x = init.msg_.positions[0] + r*cos(PI/4.f);
@@ -808,7 +595,7 @@ MotionState getGoal(const MotionState init, const double dim)
   result.msg_.positions.push_back(y);
   result.msg_.positions.push_back(init.msg_.positions[2]);
 
-  //ROS_INFO("getGoal result: %s", result.toString().c_str());
+  ROS_INFO("getGoal result: %s", result.toString().c_str());
   return result;
 }
 
@@ -819,9 +606,9 @@ MotionState getGoal(const MotionState init, const double dim)
  */
 void pubObTrj(const ros::TimerEvent e, TestCaseTwo& tc)
 {
-  ROS_INFO("In pubObTrj");
-  ROS_INFO("tc.t_begin: %f", tc.t_begin.toSec());
-  ROS_INFO("ros::Time::now(): %f", ros::Time::now().toSec());
+  //ROS_INFO("In pubObTrj");
+  //ROS_INFO("tc.t_begin: %f", tc.t_begin.toSec());
+  //ROS_INFO("ros::Time::now(): %f", ros::Time::now().toSec());
 
   ros::Duration d_elapsed = ros::Time::now() - tc.t_begin;
   
@@ -835,7 +622,7 @@ void pubObTrj(const ros::TimerEvent e, TestCaseTwo& tc)
     double d_elap_ob = d_elapsed.toSec() - ob_delay[i];
     int index = d_elap_ob*10;
     //ROS_INFO("d_elap_ob: %f index: %i", d_elap_ob, index);
-
+       
     if( (ros::Time::now() - tc.t_begin).toSec() > ob_delay[i])
     {
       int temp_index = index >= (tc.ob_trjs[i].trajectory.points.size()-1) ? tc.ob_trjs[i].trajectory.points.size()-1 : 
@@ -865,98 +652,13 @@ void pubObTrj(const ros::TimerEvent e, TestCaseTwo& tc)
 }
 
 
-
-
-/*
- * Publish obstacle information at 20Hz to simulate sensing cycles
- */
-void pubObTrjExt(const ros::TimerEvent e, TestCaseExt& tc)
-{
-  /*ROS_INFO("In pubObTrjExt");
-  ROS_INFO("tc.t_begin: %f", tc.t_begin.toSec());
-  ROS_INFO("ros::Time::now(): %f", ros::Time::now().toSec());*/
-
-  ros::Duration d_elapsed = ros::Time::now() - tc.t_begin;
-  
-  //ROS_INFO("d_elapsed: %f traj size: %i", d_elapsed.toSec(), tc.ob_trjs[0].trajectory.points.size()); 
-
-  for(int i=0;i<tc.ob_trjs.size();i++)
-  {
-    //ROS_INFO("i: %i ob_delay[%i]: %i", i, i, ob_delay[i]);
-    //ROS_INFO("Elapsed time: %f",(ros::Time::now() - tc.t_begin).toSec());
-    double d_elap_ob = d_elapsed.toSec() - tc.obs[i].d_s.toSec();
-    int index = d_elap_ob*10;
-    //ROS_INFO("d_elap_ob: %f index: %i", d_elap_ob, index);
-    //ROS_INFO("d_s.toSec(): %f", tc.obs[i].d_s.toSec());
-
-    if( (ros::Time::now() - tc.t_begin).toSec() > tc.obs[i].d_s.toSec())
-    {
-      //ROS_INFO("size: %i", tc.ob_trjs[i].trajectory.points.size()-1);
-      //ROS_INFO("Publishing ob trj");
-      int temp_index = index >= ((int)tc.ob_trjs[i].trajectory.points.size()-1) ? tc.ob_trjs[i].trajectory.points.size()-1 : 
-        index;
-        
-      trajectory_msgs::JointTrajectoryPoint p = tc.ob_trjs[i].trajectory.points[temp_index]; 
-      //ROS_INFO("temp_index: %i p: %s", temp_index, utility.toString(p).c_str());
-
-      // Build new obstacle msg
-      ramp_msgs::Obstacle ob;
-      if(index >= (tc.ob_trjs[i].trajectory.points.size()-1))
-      {
-        ob = buildObstacleMsg(p.positions[0], p.positions[1], 0, p.positions[2], 0);
-      }
-      else
-      {
-        double s = sqrt( pow(p.velocities[0],2) + pow(p.velocities[1],2) );
-        ob = buildObstacleMsg(p.positions[0], p.positions[1], s, p.positions[2], tc.obs[i].w);
-      }
-
-      //ROS_INFO("ob: %s", utility.toString(ob.ob_ms).c_str());
-     
-      tc.obs[i].msg = ob;
-      tc.ob_list.obstacles[i] = ob;
-
-      globalTc.obs[i].msg = ob;
-      globalTc.ob_list.obstacles[i] = ob;
-    }
-  }
-  
-  pub_obs.publish(tc.ob_list);
-}
-
-
-
 void bestTrajCb(const ramp_msgs::RampTrajectory::ConstPtr& msg) 
 {
   bestTrajec = *msg;
 }
 
-bool checkIfObOnGoal(TestCaseExt tc)
-{
-  std::vector<double> goal;
-  goal.push_back(2);
-  goal.push_back(2);
-  for(int i=0;i<num_obs;i++)
-  {
-    trajectory_msgs::JointTrajectoryPoint p = tc.ob_trjs[i].trajectory.points[tc.ob_trjs[i].trajectory.points.size()-1];
-
-    double dist = utility.positionDistance(p.positions, goal);
-    //ROS_INFO("p: %s\ndist: %f", utility.toString(p).c_str(), dist);
-
-    // Do .42 b/c we also need to consider if obstacles is close enough to prevent the robot from getting to the goal w/o collision
-    if(dist < 0.42)
-    {
-      return true;
-    }
-  }
-  
-  return false;
-}
-
-
 void imminentCollisionCb(const std_msgs::Bool msg)
 {
-  //ROS_INFO("Gen: In imminentCollisionCb, msg: %s", msg.data ? "True" : "False");
   IC_current = msg.data;
   if(msg.data)
   {
@@ -964,66 +666,9 @@ void imminentCollisionCb(const std_msgs::Bool msg)
   }
 }
 
-bool checkCollision(ramp_msgs::Obstacle ob)
-{
-  //ROS_INFO("In checkCollision");
-  double dist = utility.positionDistance(ob.ob_ms.positions, latestUpdate.msg_.positions);
-  //ROS_INFO("ob: %s\ndist: %f", utility.toString(ob).c_str(), dist);
-
-  return dist < 0.42;
-}
-
-void collisionCb(const ros::TimerEvent e, TestCaseExt& tc)
-{
-  //ROS_INFO("In collisionCb");
-
-  for(int i=0;i<num_obs;i++)
-  {
-      
-    if(checkCollision(globalTc.obs[i].msg))
-    {
-      if(colls[i] == false && IC_current)
-      {
-        // Check if robot in ic
-        icAtColl[i] = true;
-      }
-      else if(colls[i] == false)
-      {
-        // Check if robot in ic
-        icAtColl[i] = false;
-      }
-        
-      // Set collision to true
-      colls[i] = true;
-    }
-    //else ROS_INFO("No collision");
-  } // end for
-}
-
-void obstacleCollisonCb(const ros::TimerEvent e)
-{
-  double obRadii = 0.21;
-  for(int i=0;i<num_obs;i++)
-  {
-    for(int j=0;j<num_obs;j++)
-    {
-      if(i != j)
-      {
-        double d = utility.positionDistance( globalTc.obs[i].msg.ob_ms.positions, globalTc.obs[j].msg.ob_ms.positions);
-        if( d <= obRadii*2.0)
-        {
-          collAmongObs = true; 
-        }
-      } // end if
-    } // end inner for
-  } // end outer for
-}
-
-
 
 void updateCb(const ramp_msgs::MotionState& msg)
 {
-  //ROS_INFO("updateCb msg: %s", utility.toString(msg).c_str());
   latestUpdate = msg;
 
   tf::Transform T_w_odom;
@@ -1031,43 +676,7 @@ void updateCb(const ramp_msgs::MotionState& msg)
   T_w_odom.setRotation(tf::createQuaternionFromYaw(PI/4.));
 
   latestUpdate.transformBase(T_w_odom);
-  //ROS_INFO("After transform, msg: %s", latestUpdate.toString().c_str());
 }
-
-
-
-
-
-
-
-std::string getTestCaseInfo(TestCaseExt tc)
-{
-  std::ostringstream result;
-
-  for(int i=0;i<tc.obs.size();i++)
-  {
-    ObInfoExt o = tc.obs[i];
-    if(i>0)
-      result<<"\n";
-
-    result<<o.x<<" "<<o.y<<" "<<o.relative_direction<<" "<<o.d<<" "<<o.v_i<<" "<<o.v_f<<" "<<o.w<<" "<<o.d_s.toSec();
-  }
-
-  result<<"\n"<<tc.d_states;
-  
-
-  return result.str();
-}
-
-
-
-
-void shutdown(int sigint)
-{
-  // Set flag signifying that the next test case is not ready
-  ros::param::set("/ramp/tc_generated", false);
-}
-
 
 
 
@@ -1076,10 +685,6 @@ int main(int argc, char** argv) {
 
   ros::init(argc, argv, "ramp_planner");
   ros::NodeHandle handle;
-
-  // Set function to run at shutdown
-  signal(SIGINT, shutdown);
-  
   
   // Load ros parameters and obstacle transforms
   //loadParameters(handle);
@@ -1097,17 +702,17 @@ int main(int argc, char** argv) {
   std::vector<double> time_left;
   std::vector<bool>   stuck_in_ic;
   std::vector<bool>   ic_occurred;
-  std::vector<bool>   ob_on_goal;
   std::vector<TestCaseTwo> test_cases;
-  std::vector<TestCaseExt> test_cases_ext;
 
   
-  ros::Timer ob_trj_timer, checkCollTimer, checkCollAmongObsTimer;
+  ros::Timer ob_trj_timer;
   ob_trj_timer.stop();
-  checkCollTimer.stop();
-  checkCollAmongObsTimer.stop();
   
-  int num_tests = 35;
+  int num_tests = 42;
+
+  ob_delay.push_back(2);
+  ob_delay.push_back(2);
+  ob_delay.push_back(4);
 
 
   // Make an ObstacleList Publisher
@@ -1118,64 +723,30 @@ int main(int argc, char** argv) {
   ros::Subscriber sub_imminent_collision_ = handle.subscribe("imminent_collision", 1, imminentCollisionCb);
   ros::Subscriber sub_update = handle.subscribe("update", 1, updateCb);
 
-  //ros::Timer collTimer = handle.createTimer(collisionCb);
-  //ob_trj_timer = handle.createTimer(ros::Duration(1./20.), boost::bind(pubObTrjExt, _1, tc));
-  
-  
-  std::string path = "/home/sterlingm/ros_workspace/src/ramp/data/system-level-testing/ext/0-1-3/";
 
-
-  // Open files for data
   std::ofstream f_reached;
-  f_reached.open(path + "reached_goal.txt", 
+  f_reached.open("/home/sterlingm/ros_workspace/src/ramp/ramp_planner/system_level_data/8/reached_goal.txt", 
       std::ios::out | std::ios::app | std::ios::binary);
   
   std::ofstream f_feasible;
-  f_feasible.open(path + "feasible.txt", std::ios::out 
+  f_feasible.open("/home/sterlingm/ros_workspace/src/ramp/ramp_planner/system_level_data/8/feasible.txt", std::ios::out 
       | std::ios::app | std::ios::binary);
 
   std::ofstream f_time_left;
-  f_time_left.open(path + "time_left.txt", 
+  f_time_left.open("/home/sterlingm/ros_workspace/src/ramp/ramp_planner/system_level_data/8/time_left.txt", 
       std::ios::out | std::ios::app | std::ios::binary);
   
   std::ofstream f_ic_stuck;
-  f_ic_stuck.open(path + "ic_stuck.txt", std::ios::out 
+  f_ic_stuck.open("/home/sterlingm/ros_workspace/src/ramp/ramp_planner/system_level_data/8/ic_stuck.txt", std::ios::out 
       | std::ios::app | std::ios::binary);
   
   std::ofstream f_ic_occurred;
-  f_ic_occurred.open(path + "ic_occurred.txt", 
+  f_ic_occurred.open("/home/sterlingm/ros_workspace/src/ramp/ramp_planner/system_level_data/8/ic_occurred.txt", 
       std::ios::out | std::ios::app | std::ios::binary);
   
-  std::ofstream f_ob_on_goal;
-  f_ob_on_goal.open(path + "ob_on_goal.txt", 
-      std::ios::out | std::ios::app | std::ios::binary);
-  
-  std::ofstream f_colls;
-  f_colls.open(path + "colls.txt", 
-      std::ios::out | std::ios::app | std::ios::binary);
-  
-  std::ofstream f_icAtColl;
-  f_icAtColl.open(path + "icAtColl.txt", 
-      std::ios::out | std::ios::app | std::ios::binary);
-
-  std::ofstream f_testInfo;
-  f_testInfo.open(path + "testInfo.txt", 
-      std::ios::out | std::ios::app | std::ios::binary);
-
-  std::ofstream f_collAmongObs;
-  f_collAmongObs.open(path + "collAmongObs.txt",
-      std::ios::out | std::ios::app | std::ios::binary);
-
   
   // Set flag signifying that the next test case is not ready
   ros::param::set("/ramp/tc_generated", false);
-
-
-  for(int i=0;i<num_obs;i++)
-  {
-    colls.push_back(false);
-    icAtColl.push_back(false);
-  }
 
   ros::Duration d_history(1);
   ros::Duration d_test_case_thresh(20);
@@ -1208,78 +779,43 @@ int main(int argc, char** argv) {
       abtc.times[i_ob+3] = 1;
       abtc.times[i_ob+6] = 1;
     }
+
+    generateObInfoGrid(initial_state);
     
     /*
      * Get test data for the abtc
      */
-    //TestCaseTwo tc = generateTestCase(initial_state, num_obs);
-    TestCaseExt tc = generateTestCaseExt(initial_state, num_obs);
+    TestCaseTwo tc = generateTestCase(initial_state, num_obs);
     tc.abtc = abtc; 
 
     /*
      * Get trajectories for each obstacle
      */
     ramp_msgs::TrajectorySrv tr_srv;
-    for(int j=0;j<tc.obs.size();j++)
+    for(int i=0;i<tc.obs.size();i++)
     {
       ramp_msgs::TrajectoryRequest tr;
 
       tf::Transform tf;
       tf.setOrigin( tf::Vector3(0,0,0) );
       tf.setRotation( tf::createQuaternionFromYaw(0) );
-      MotionType mt = my_planner.findMotionType(tc.obs[j].msg);
+      MotionType mt = my_planner.findMotionType(tc.obs[i].msg);
 
-      // Temporarily set the ob speed to the final speed to avoid overshooting
-      // the trajec. goal and causing the trajec to 'back up'
-      // May still face issues with circular arc trajectories?
-      ramp_msgs::Obstacle o = tc.obs[j].msg;
+      ramp_msgs::Path p = my_planner.getObstaclePath(tc.obs[i].msg, mt);
 
-      if(tc.obs[j].v_f > tc.obs[j].v_i)
-      {
-        o.ob_ms.velocities[0] = (tc.obs[j].v_f*2) * cos(tc.obs[j].relative_direction);
-        o.ob_ms.velocities[1] = (tc.obs[j].v_f*2) * sin(tc.obs[j].relative_direction);
-      }
-
-      
-      // Get the path. Use the ob msg with final speed
-      //ramp_msgs::Path p = my_planner.getObstaclePath(tc.obs[i].msg, mt);
-      ramp_msgs::Path p = my_planner.getObstaclePath(o, mt);
-
-      // Set 1st point on path velocity back to initial velocity
-      p.points[0].motionState.velocities[0] = tc.obs[j].v_i * cos(tc.obs[j].relative_direction);
-      p.points[0].motionState.velocities[1] = tc.obs[j].v_i * sin(tc.obs[j].relative_direction);
-
-      // Set tr members
       tr.path = p;
       tr.type = PREDICTION;
-
-      // Set Ext ob model stuff
-      tr.sl_traj        = true;
-      tr.sl_final_speed = tc.obs[j].v_f;
-      //tr.sl_init_dur    = tc.obs[j].d_vi;
-      //tr.sl_final_dur   = tc.obs[j].d_vf;
-      // Changed to have a static time to be in a state for all obstacles
-      tr.sl_init_dur    = tc.d_states;
-      tr.sl_final_dur   = tc.d_states;
     
-      // Get initial delay from hard-coded vector (for now)
-      //tr.sl_init_dur    = tc.obs[j].d_s;
-
-      // Push back request
       tr_srv.request.reqs.push_back(tr);
-
-
-      // Initialize colls and icAtColls
-      colls[j] = false;
-      icAtColl[j] = false;
-    } // end for
+   
+    }
 
     // Call trajectory generator
     if(trj_gen.call(tr_srv))
     {
       for(int i=0;i<tr_srv.response.resps.size();i++)
       {
-        //ROS_INFO("Ob Traj: %s", utility.toString(tr_srv.response.resps[i].trajectory).c_str());
+        ROS_INFO("Traj: %s", utility.toString(tr_srv.response.resps[i].trajectory).c_str());
         tc.ob_trjs.push_back(tr_srv.response.resps[i].trajectory);
       }
     }
@@ -1318,41 +854,24 @@ int main(int argc, char** argv) {
 
     ROS_INFO("Generate: Planner ready, publishing static obstacles");
 
-    // Set static-obs param true
-    ROS_INFO("Generate: Setting flag for static obs to true");
-    ros::param::set("/ramp/static_obs", true);
-
     // Publish static obstacles
     pub_obs.publish(obs_stat);
 
     // Wait for 1 second
     d_history.sleep();
 
-    // Set static-obs param false
-    ros::param::set("/ramp/static_obs", false);
-    ROS_INFO("Generate: static_obs flag set to false");
-
-    // Set dy-obs param true
-    ROS_INFO("Generate: Setting flag for dy obs to true");
-    ros::param::set("/ramp/dy_obs", true);
+    ROS_INFO("Generate: Done sleeping for 1 second");
 
     // Publish dynamic obstacles
-    pub_obs.publish(tc.ob_list);
+    //pub_obs.publish(tc.ob_list);
 
     tc.t_begin = ros::Time::now();
-    globalTc = tc;
-
-    // Set ob coll variable
-    collAmongObs = false;
 
     // Create timer to continuously publish obstacle information
-    ob_trj_timer = handle.createTimer(ros::Duration(1./20.), boost::bind(pubObTrjExt, _1, tc));
-    checkCollTimer = handle.createTimer(ros::Duration(1./20.), boost::bind(collisionCb, _1, tc));
-    checkCollAmongObsTimer = handle.createTimer(ros::Duration(1./20.), obstacleCollisonCb);
+    ob_trj_timer = handle.createTimer(ros::Duration(1./20.), boost::bind(pubObTrj, _1, tc));
 
-    // Set flag signifying that the next test case is not ready
-    ros::param::set("/ramp/tc_generated", false);
-    
+
+
     /*
      * Wait for planner to run for time threshold
      */
@@ -1363,40 +882,27 @@ int main(int argc, char** argv) {
       r.sleep();
       ros::spinOnce();
     }
-    // Get execution time
     ros::Duration elasped = ros::Time::now() - tc.t_begin;
+
+    ROS_INFO("generate_test_case: Test case completed");
+
+    // Set flag signifying that the next test case is not ready
+    ros::param::set("/ramp/tc_generated", false);
     
-    // Stop publishing dy obs
+
     ob_trj_timer.stop();
-    checkCollTimer.stop();
-    checkCollAmongObsTimer.stop();
-
-    ROS_INFO("Generate:Test case done, setting flags back to false");
-
-    // Print out collision info
-    for(int c=0;c<colls.size();c++)
-    {
-      ROS_INFO("colls[%i]: %s", c, colls[c] ? "True" : "False");
-      ROS_INFO("icAtColl[%i]: %s", c, icAtColl[c] ? "True" : "False");
-    }
-
-    // Set dy-obs param false
-    ros::param::set("/ramp/dy_obs", false);
 
 
     /*
      * Collect data
      */
 
-    ROS_INFO("Results for test case %i", i);
 
     MotionState goal;
     goal.msg_.positions.push_back(2);
     goal.msg_.positions.push_back(2);
     goal.msg_.positions.push_back(PI/4.f);
     double dist = utility.positionDistance( goal.msg_.positions, latestUpdate.msg_.positions );
-     
-    ROS_INFO("dist: %f latestUpdate: %s", dist, latestUpdate.toString().c_str());
 
     //if(elasped.toSec()+0.01 < d_test_case_thresh.toSec())
     //if(bestTrajec.trajectory.points.size() < 3)
@@ -1410,8 +916,6 @@ int main(int argc, char** argv) {
       reached_goal.push_back(false);
       f_reached<<false<<std::endl;
     }
-
-    ROS_INFO("bestTrajec: %s", utility.toString(bestTrajec).c_str());
       
 
     if(bestTrajec.feasible)
@@ -1431,7 +935,6 @@ int main(int argc, char** argv) {
       //time_left.push_back(9999);
     }
 
-    ROS_INFO("IC: %s", IC_current ? "True" : "False");
     
     if(IC_current)
     {
@@ -1455,49 +958,16 @@ int main(int argc, char** argv) {
       f_ic_occurred<<false<<std::endl;
     }
 
-    if(checkIfObOnGoal(tc))
-    {
-      ob_on_goal.push_back(true);
-      f_ob_on_goal<<true<<std::endl;
-    }
-    else
-    {
-      ob_on_goal.push_back(false);
-      f_ob_on_goal<<false<<std::endl;
-    }
-
-
-    int numColls = 0;
-    int numICAtColl = 0;
-    for(int i=0;i<num_obs;i++)
-    {
-      numColls += colls[i] ? 1 : 0;  
-      numICAtColl += icAtColl[i] ? 1 : 0;
-    }
-    f_colls<<numColls<<std::endl;
-    f_icAtColl<<numICAtColl<<std::endl;
-
-    f_testInfo<<getTestCaseInfo(tc)<<std::endl;
-
-    f_collAmongObs<<collAmongObs<<std::endl;
 
     bestTrajec_at_end.push_back(bestTrajec);
-    test_cases_ext.push_back(tc);
-    //test_cases.push_back(tc);
-    
-    ROS_INFO("Completed test %i", i); 
-  } // end for each test case
+    test_cases.push_back(tc);
+  } // end for
 
   f_reached.close();
   f_feasible.close();
   f_time_left.close();
   f_ic_stuck.close();
   f_ic_occurred.close();
-  f_ob_on_goal.close();
-  f_colls.close();
-  f_icAtColl.close();
-  f_testInfo.close();
-  f_collAmongObs.close();
     
 
   std::cout<<"\n\nExiting Normally\n";

@@ -40,47 +40,22 @@ bool Prediction::trajectoryRequest(ramp_msgs::TrajectoryRequest& req, ramp_msgs:
     traj.push_back(ms_init);
   }
 
-  // Straight line
   else if(fabs(req.path.points.at(0).motionState.velocities.at(2)) < 0.1) 
   {
-    // If doing a SL-test obstacle trajectory
-    if(req.sl_traj)
-    {
-      //ROS_INFO("In SL straight line prediction");
-      //ROS_INFO("goal: %s", utility_.toString(req.path.points[1].motionState).c_str());
-      LineSL liSL;
+    //ROS_INFO("In straight line prediction");
+    Line li;
 
 
-      liSL.init(req.path.points.at(0).motionState, req.path.points.at(1).motionState, req.sl_init_dur, req.sl_final_dur, req.sl_final_speed);
-      traj = liSL.generatePoints(); 
-    }
-    else
-    {
-      //ROS_INFO("In straight line prediction");
-      Line li;
-
-
-      li.init(req.path.points.at(0).motionState, req.path.points.at(1).motionState);
-      traj = li.generatePoints(); 
-    }
+    li.init(req.path.points.at(0).motionState, req.path.points.at(1).motionState);
+    traj = li.generatePoints(); 
   }
 
-  else if(fabs(req.path.points.at(0).motionState.velocities.at(2)) > 0.1)
+  else if(fabs(req.path.points.at(0).motionState.velocities.at(2)) > 0.1) 
   {
-    if(req.sl_traj)
-    {
-      //ROS_INFO("In SL circle prediction");
-      CircleSL ciSL;
-      ciSL.init(req.path.points.at(0).motionState, req.sl_init_dur, req.sl_final_dur, req.sl_final_speed);
-      traj = ciSL.generatePoints(); 
-    }
-    else
-    {
-      //ROS_INFO("In circle prediction");
-      Circle ci;
-      ci.init(req.path.points.at(0).motionState);
-      traj = ci.generatePoints(); 
-    }
+    //ROS_INFO("In circle prediction");
+    Circle ci;
+    ci.init(req.path.points.at(0).motionState);
+    traj = ci.generatePoints(); 
   }
   else 
   {

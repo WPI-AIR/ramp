@@ -21,8 +21,8 @@ def main():
     rospack = rospkg.RosPack()
     ros_pkg_path = rospack.get_path('ramp_sensing')
 
-    # If a filename was passed in then set it to that, otherwise set to hilbert map filename
-    fname = sys.argv[1] if len(sys.argv) > 1 else 'hilbert_map.csv'
+    # If a filenams was passed in then set it to that, otherwise set to hilbert map filename
+    fname = sys.argv[1] if len(sys.argv) > 2 else 'hilbert_map.csv'
     p = os.path.join(ros_pkg_path, fname)
     print p
 
@@ -48,14 +48,12 @@ def main():
             # Get x and y
             xs.append(float(nums[0]))
             ys.append(float(nums[1]))
-
+                
             # Append the probability value as an int
             p = float(nums[2])
-            if p < 1 and p > 0:
-                p = p * 100
-
+            p = p * 100
             grid.data.append(int(p))
-
+            
             if len(nums) > 3:
                 if gamma == 0:
                     gamma = float(nums[3])
@@ -66,19 +64,13 @@ def main():
     y_min = min(ys)
     y_max = max(ys)
 
-    print('x_min: %f x_max: %f y_min: %f y_max: %f' % (x_min, x_max, y_min, y_max))
+    #print('x_min: %f x_max: %f y_min: %f y_max: %f' % (x_min, x_max, y_min, y_max))
     
     # Set other properties of grid
     grid.header.frame_id = 'map'
     grid.info.resolution = 0.05
-    # Added +1 for static map for medium env 1
-    if len(sys.argv) > 1:
-        grid.info.width = ((x_max - x_min + grid.info.resolution) * 20)+1
-        grid.info.height = ((y_max - y_min + grid.info.resolution) * 20)+1
-    else:
-        grid.info.width = ((x_max - x_min + grid.info.resolution) * 20)
-        grid.info.height = ((y_max - y_min + grid.info.resolution) * 20)
-
+    grid.info.width = (x_max - x_min + grid.info.resolution) * 20
+    grid.info.height = (y_max - y_min + grid.info.resolution) * 20
     #print('(x_max - x_min - grid.info.resolution): %f' % \
             #(x_max - x_min + grid.info.resolution))
     
@@ -88,7 +80,7 @@ def main():
     #grid.info.height = len(lines
 
     # Set topic name for occupancy grid
-    gridTopicName = sys.argv[2] if len(sys.argv) > 2 else 'hilbert_map_grid'
+    gridTopicName = sys.argv[2] if len(sys.argv) > 2 else 'hilbert_map'
 
     # Create Publisher 
     pub = rospy.Publisher('hilbert_map', HilbertMap, queue_size=1)

@@ -49,8 +49,8 @@ TrajectoryView::TrajectoryView(QWidget *parent)
 {
     width_ = 540;
     height_ = 540;
-    maxWidthMeters_ = 2.1f;
-    maxHeightMeters_ = 2.1f;
+    maxWidthMeters_ = 2.f;
+    maxHeightMeters_ = 2.f;
 
     // Setup the scene
     QGraphicsScene *scene = new QGraphicsScene(this);
@@ -94,7 +94,6 @@ void TrajectoryView::population(const ramp_msgs::Population& msg)
 
   populations_.clear();
   populations_.push_back(msg);
-  //printf("\nmsg.size(): %i", (int)msg.population.size());
 
   /*if(populations_.size() < 2) {
     populations_.push_back(msg);
@@ -208,7 +207,6 @@ void TrajectoryView::drawPopulation() {
 
     // For each trajectory in the population
     for(unsigned int t=0;t<populations_.at(p).population.size();t++) {
-      //printf("\nDrawing trajectory %i size: %i", t, (int)populations_.at(p).population.at(t).trajectory.points.size());
 
       // Get the points for that trajectory
       std::vector<trajectory_msgs::JointTrajectoryPoint> points = populations_.at(p).population.at(t).trajectory.points;
@@ -218,7 +216,7 @@ void TrajectoryView::drawPopulation() {
       //std::cout<<"\npoints[0]: ("<<points.at(0).positions.at(0)<<", "<<points.at(0).positions.at(1)<<")\n";
         
       // If movingOn, set to black
-      if(t == 0) 
+      if(t == populations_.at(p).population.size()-1) 
       {
         penTraj = QPen( QColor(0, 0, 0, 255) );
       }
@@ -253,7 +251,7 @@ void TrajectoryView::drawPopulation() {
 
         this->scene()->addEllipse(metersToPixels(p.at(0), true)-(radiusPixels/2),
                                     metersToPixels(p.at(1), false)+(radiusPixels/2),
-                                    metersToPixels(radius*2, true), metersToPixels(radius*2, false), pen);
+                                    metersToPixels(radius, true), metersToPixels(radius, false), pen);
       } //end if 1 point
 
       else if (points.size() > 0) {
@@ -271,11 +269,10 @@ void TrajectoryView::drawPopulation() {
             {
               pen = pen2;
             }
-            //printf("\nDRAWING CIRCLE FOR TRAJEC %i", t);
             // Draw a circle
             this->scene()->addEllipse(metersToPixels(points.at(j).positions.at(0), true)-(radiusPixels/2),
                                       metersToPixels(points.at(j).positions.at(1), false)+(radiusPixels/2),
-                                      metersToPixels(radius*2, true), metersToPixels(radius*2, false), pen);
+                                      metersToPixels(radius, true), metersToPixels(radius, false), pen);
             pen = penTraj;               
           } // end if first point
 

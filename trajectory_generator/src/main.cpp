@@ -28,12 +28,11 @@ void fixDuplicates(ramp_msgs::TrajectoryRequest& req)
 
     if(utility.positionDistance(a.positions, b.positions) < 0.01)
     {
-      /*ROS_WARN("Consecutive duplicate knot points in path:\nPath[%i]:\n%s\nand\nPath[%i]\n%s\nDist: %f Removing knot point at index %i", 
-          i+1,
+      /*//ROS_WARN("Consecutive duplicate knot points in path:\nPath[%i]:\n%s\nand\nPath[%i]\n%s\nRemoving knot point at 
+          index %i", i+1,
           utility.toString(a).c_str(),
           i+1,
           utility.toString(b).c_str(),
-          utility.positionDistance(a.positions, b.positions),
           i);*/
       req.path.points.erase(req.path.points.begin()+i+1);
       i--;
@@ -46,31 +45,21 @@ void fixDuplicates(ramp_msgs::TrajectoryRequest& req)
 
 bool checkGoal(ramp_msgs::TrajectoryRequest req)
 {
-  // Circle predictions only have one knotpoint
-  if(req.path.points.size() == 1)
+  ramp_msgs::MotionState a = req.path.points.at(0).motionState;
+  ramp_msgs::MotionState b = req.path.points.at(1).motionState;
+
+  if(utility.positionDistance(a.positions, b.positions) < 0.01)
   {
-    return false;
+    return true;
   }
 
-  // Go through each knot point
-  for(int i=0;i<req.path.points.size()-1;i++)
-  {
-    //ROS_INFO("dist: %f", utility.positionDistance(req.path.points[i].motionState.positions, req.path.points[i+1].motionState.positions));
-    if(utility.positionDistance(req.path.points[i].motionState.positions, req.path.points[i+1].motionState.positions) > 0.1)
-    {
-      return false;
-    }
-  }
-
-
-  return true;
+  return false;
 }
 
 
 bool requestCallback( ramp_msgs::TrajectorySrv::Request& req,
                       ramp_msgs::TrajectorySrv::Response& res) 
 {
-  //ROS_INFO("In trajectory generator requestCallback");
   high_resolution_clock::time_point tStart = high_resolution_clock::now();
   for(uint8_t i=0;i<req.reqs.size();i++)
   {
@@ -81,7 +70,7 @@ bool requestCallback( ramp_msgs::TrajectorySrv::Request& req,
     /*
      * Check for start == goal
      */
-    if(checkGoal(treq))
+    if(treq.path.points.size() == 2 && checkGoal(treq))
     {
       tres.trajectory.trajectory.points.push_back(utility.getTrajectoryPoint(treq.path.points.at(0).motionState));
       tres.trajectory.i_knotPoints.push_back(0);
@@ -112,7 +101,7 @@ bool requestCallback( ramp_msgs::TrajectorySrv::Request& req,
     }
     else if(treq.path.points.size() > 0) 
     {
-      //ROS_INFO("In prediction");
+      ////ROS_INFO("In prediction");
       Prediction prediction;
       prediction.trajectoryRequest(treq, tres);
     }
@@ -121,19 +110,6 @@ bool requestCallback( ramp_msgs::TrajectorySrv::Request& req,
     {
       ////ROS_WARN("First two knot points are equal!");
     }
-    
-
-    if(tres.trajectory.curves.size() > 0)
-    {
-      std::vector<double> sp = tres.trajectory.curves[0].segmentPoints[1].positions;
-      std::vector<double> cp = tres.trajectory.curves[0].controlPoints[1].positions;
-
-      if(utility.positionDistance(sp,cp) > 0.5)
-      {
-        ROS_INFO("Trajectory Request Received: %s", utility.toString(treq).c_str());
-      }
-    }
-
     //ROS_INFO("Response: %s", utility.toString(tres).c_str());
     
     

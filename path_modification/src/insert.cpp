@@ -9,7 +9,7 @@ Insert::Insert(const ramp_msgs::Path p) : path_(p) {}
 const ramp_msgs::Path Insert::perform() 
 {
 
-  if(path_.points.size() < 7)
+  if(path_.points.size() < 5)
   {
     // Randomly choose two adjacent knot points
     // One index is generated randomly and the second will be the next knot point,
@@ -38,12 +38,10 @@ const ramp_msgs::Path Insert::perform()
       for(unsigned int i=0;i<path_.points.at(0).motionState.positions.size();i++) {
         
         // Generate a random value for each K in the specified range
-        double  min = ranges_.at(i).min;
-        double  max = ranges_.at(i).max;
-        float r = (float)rand();
-        //ROS_INFO("r: %f min: %f max: %f max-min: %f", r, min, max, max-min);
+        double  min = utility_.standardRanges_.at(i).min;
+        double  max = utility_.standardRanges_.at(i).max;
         float   temp = (min == 0 && max == 0) ? 0 :      
-               ( min + r / ((float)RAND_MAX / (max - min)) );
+               ( min + (float)rand() / ((float)RAND_MAX / (max - min)) );
 
         // Set the position and velocity
         kp.motionState.positions.push_back(temp);

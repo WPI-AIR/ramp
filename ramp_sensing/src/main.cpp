@@ -23,16 +23,12 @@
 #include <bfl/pdf/analyticconditionalgaussian.h>
 
 
-bool use_static_map = false;
+bool persistGrid = false;
 bool gotPersistent = false;
 bool use_odom_topics = false;
-bool use_hilbert_map = false;
-bool planner_started = false;
-bool detect_obs = true;
 
 
-
-bool cropMap;
+bool cropMap = false;
 bool remove_outside_fov;
 double rvizLifetime = 0.15;
 
@@ -54,19 +50,18 @@ std::vector<visualization_msgs::Marker> pLines;
 std::vector<visualization_msgs::Marker> cLines;
 
 nav_msgs::OccupancyGrid global_costmap;
-nav_msgs::OccupancyGrid staticMap;
-nav_msgs::OccupancyGrid hilbertMap;
 
 Utility util;
 double rate;
-ros::Publisher pub_obj, pub_rviz, pub_cons_costmap, pub_half_costmap, pub_global_costmap, pub_combinedHmap;
+ros::Publisher pub_obj, pub_rviz, pub_cons_costmap, pub_half_costmap, pub_global_costmap;
 std::vector<Obstacle> obs;
+
 ramp_msgs::ObstacleList list;
 ramp_msgs::ObstacleList staticObsList;
-ramp_msgs::ObstacleList dynamicObsList;
 std::vector< std::string > ob_odoms;
 std::map< std::string, uint8_t > topic_index_map;
 nav_msgs::OccupancyGrid global_grid;
+nav_msgs::OccupancyGrid staticMap;
 
 double radius;
 std::vector<double> dof_min;
@@ -114,7 +109,6 @@ int    ob_not_moving_count  = 10;
 
 // Obstacles that we want to save the circlegroup for
 std::vector<CircleGroup> largeObs;
-
 std::vector<CircleGroup> staticObs;
 
 double initial_theta        = PI;
@@ -324,44 +318,19 @@ void loadParameters(const ros::NodeHandle& handle)
     ////////ROS_ERROR("Did not find rosparam /ramp/remove_outside_fov");
   }
   
-  if(handle.hasParam("/ramp/use_static_map"))
+  if(handle.hasParam("/ramp/use_persistent_grid"))
   {
-    handle.getParam("/ramp/use_static_map", use_static_map);
+    handle.getParam("/ramp/use_persistent_grid", persistGrid);
   }
   else
   {
     ////////ROS_ERROR("Did not find rosparam /ramp/use_persistent_grid");
   }
-  
-  if(handle.hasParam("/ramp/crop_map"))
-  {
-    handle.getParam("/ramp/crop_map", cropMap);
-  }
-  else
-  {
-    ////////ROS_ERROR("Did not find rosparam /ramp/use_persistent_grid");
-  }
-
 
 
   if(handle.hasParam("ramp/use_odom_topics"))
   {
     handle.getParam("ramp/use_odom_topics", use_odom_topics);
-  }
-
-  if(handle.hasParam("ramp/use_hilbert_map"))
-  {
-    handle.getParam("ramp/use_hilbert_map", use_hilbert_map);
-  }
-
-
-  if(handle.hasParam("/ramp/detect_obs"))
-  {
-    handle.getParam("/ramp/detect_obs", detect_obs);
-  }
-  else
-  {
-    ////////ROS_ERROR("Did not find rosparam /ramp/use_persistent_grid");
   }
 
 
@@ -372,7 +341,7 @@ void loadParameters(const ros::NodeHandle& handle)
 
 void loadObstacleTF()
 {
-  std::ifstream ifile("/home/sapanostic/catkin_ws/src/ramp-hilbert_map/ramp_planner/obstacle_tf.txt", std::ios::in);
+  std::ifstream ifile("/home/sapanostic/catkin_ws/src/ramp-broadcasting-obstacles/ramp_planner/obstacle_tf.txt", std::ios::in);
 
   if(!ifile.is_open())
   {
@@ -533,8 +502,6 @@ void updateOtherRobotCb(const nav_msgs::Odometry::ConstPtr& o, const std::string
   //ROS_INFO("topic: %s", topic.c_str());
   int index = topic_index_map[topic];
   //ROS_INFO("index: %i", index);
-  
-  //ROS_INFO("obs.size(): %i", (int)obs.size());
 
   if(obs.size() < index+1)
   {
@@ -542,168 +509,49 @@ void updateOtherRobotCb(const nav_msgs::Odometry::ConstPtr& o, const std::string
     Obstacle temp;
     temp.update(*o);
     obs.push_back(temp);
-    dynamicObsList.obstacles.push_back(temp.msg_);
+    list.obstacles.push_back(temp.msg_);
   }
   else
   {
     //ROS_INFO("In else");
     obs.at(index).update(*o);
-    dynamicObsList.obstacles.at(index) = obs.at(index).msg_;
+    list.obstacles.at(index) = obs.at(index).msg_;
   }
 
-  //ROS_INFO("dynamicObsList.obstacles.size(): %i", (int)dynamicObsList.obstacles.size());
+  //ROS_INFO("list.obstacles.size(): %i", (int)list.obstacles.size());
   //ROS_INFO("Exiting updateOtherRobotCb");
 } //End updateOtherRobotCb
 
 
 
-void addHardCodedStaticObs()
-{
-  //ROS_INFO("In addHardCodedStaticObs");
-  //dynamicObsList.obstacles.clear();
-
-  Obstacle oa;
-  oa.msg_.ob_ms.positions.push_back(2.0);
-  oa.msg_.ob_ms.positions.push_back(2.0);
-  oa.msg_.ob_ms.positions.push_back(0);
-  oa.msg_.cirGroup.fitCir.center.x = oa.msg_.ob_ms.positions[0];
-  oa.msg_.cirGroup.fitCir.center.y = oa.msg_.ob_ms.positions[1];
-  oa.msg_.cirGroup.fitCir.radius = 0.25;
-  oa.msg_.cirGroup.packedCirs.push_back(oa.msg_.cirGroup.fitCir);
-  oa.msg_.ob_ms.velocities.push_back(0);
-  oa.msg_.ob_ms.velocities.push_back(0);
-  oa.msg_.ob_ms.velocities.push_back(0);
-
-
-  Obstacle ob;
-  ob.msg_.ob_ms.positions.push_back(2.3);
-  ob.msg_.ob_ms.positions.push_back(1.7);
-  ob.msg_.ob_ms.positions.push_back(0);
-  ob.msg_.cirGroup.fitCir.center.x = ob.msg_.ob_ms.positions[0];
-  ob.msg_.cirGroup.fitCir.center.y = ob.msg_.ob_ms.positions[1];
-  ob.msg_.cirGroup.fitCir.radius = 0.25;
-  ob.msg_.cirGroup.packedCirs.push_back(ob.msg_.cirGroup.fitCir);
-  ob.msg_.ob_ms.velocities.push_back(0);
-  ob.msg_.ob_ms.velocities.push_back(0);
-  ob.msg_.ob_ms.velocities.push_back(0);
-
-
-  Obstacle oc;
-  oc.msg_.ob_ms.positions.push_back(2.5);
-  oc.msg_.ob_ms.positions.push_back(1.35);
-  oc.msg_.ob_ms.positions.push_back(0);
-  oc.msg_.cirGroup.fitCir.center.x = oc.msg_.ob_ms.positions[0];
-  oc.msg_.cirGroup.fitCir.center.y = oc.msg_.ob_ms.positions[1];
-  oc.msg_.cirGroup.fitCir.radius = 0.22;
-  oc.msg_.cirGroup.packedCirs.push_back(oc.msg_.cirGroup.fitCir);
-  oc.msg_.ob_ms.velocities.push_back(0);
-  oc.msg_.ob_ms.velocities.push_back(0);
-  oc.msg_.ob_ms.velocities.push_back(0);
-
-  Obstacle od;
-  od.msg_.ob_ms.positions.push_back(0.8);
-  od.msg_.ob_ms.positions.push_back(2.8);
-  od.msg_.ob_ms.positions.push_back(0);
-  od.msg_.cirGroup.fitCir.center.x = od.msg_.ob_ms.positions[0];
-  od.msg_.cirGroup.fitCir.center.y = od.msg_.ob_ms.positions[1];
-  od.msg_.cirGroup.fitCir.radius = 0.2;
-  od.msg_.cirGroup.packedCirs.push_back(od.msg_.cirGroup.fitCir);
-  od.msg_.ob_ms.velocities.push_back(0);
-  od.msg_.ob_ms.velocities.push_back(0);
-  od.msg_.ob_ms.velocities.push_back(0);
-
-  Obstacle oe;
-  oe.msg_.ob_ms.positions.push_back(1.2);
-  oe.msg_.ob_ms.positions.push_back(2.8);
-  oe.msg_.ob_ms.positions.push_back(0);
-  oe.msg_.cirGroup.fitCir.center.x = oe.msg_.ob_ms.positions[0];
-  oe.msg_.cirGroup.fitCir.center.y = oe.msg_.ob_ms.positions[1];
-  oe.msg_.cirGroup.fitCir.radius = 0.2;
-  oe.msg_.cirGroup.packedCirs.push_back(oe.msg_.cirGroup.fitCir);
-  oe.msg_.ob_ms.velocities.push_back(0);
-  oe.msg_.ob_ms.velocities.push_back(0);
-  oe.msg_.ob_ms.velocities.push_back(0);
-
-  /*Obstacle of;
-  of.msg_.ob_ms.positions.push_back(2.0);
-  of.msg_.ob_ms.positions.push_back(3.25);
-  of.msg_.ob_ms.positions.push_back(0);
-  of.msg_.cirGroup.fitCir.center.x = of.msg_.ob_ms.positions[0];
-  of.msg_.cirGroup.fitCir.center.y = of.msg_.ob_ms.positions[1];
-  of.msg_.cirGroup.fitCir.radius = 0.25;
-  of.msg_.cirGroup.packedCirs.push_back(of.msg_.cirGroup.fitCir);
-  of.msg_.ob_ms.velocities.push_back(0);
-  of.msg_.ob_ms.velocities.push_back(0);
-  of.msg_.ob_ms.velocities.push_back(0);
-
-  Obstacle og;
-  og.msg_.ob_ms.positions.push_back(3.2);
-  og.msg_.ob_ms.positions.push_back(0.33);
-  og.msg_.ob_ms.positions.push_back(0);
-  og.msg_.cirGroup.fitCir.center.x = og.msg_.ob_ms.positions[0];
-  og.msg_.cirGroup.fitCir.center.y = og.msg_.ob_ms.positions[1];
-  og.msg_.cirGroup.fitCir.radius = 0.33;
-  og.msg_.cirGroup.packedCirs.push_back(og.msg_.cirGroup.fitCir);
-  og.msg_.ob_ms.velocities.push_back(0);
-  og.msg_.ob_ms.velocities.push_back(0);
-  og.msg_.ob_ms.velocities.push_back(0);*/
-
-  if(dynamicObsList.obstacles.size() > 6)
-  {
-    dynamicObsList.obstacles[2] = oa.msg_;
-    dynamicObsList.obstacles[3] = ob.msg_;
-    dynamicObsList.obstacles[4] = oc.msg_;
-    dynamicObsList.obstacles[5] = od.msg_;
-    dynamicObsList.obstacles[6] = oe.msg_;
-  }
-  else
-  {
-    dynamicObsList.obstacles.push_back(oa.msg_);
-    dynamicObsList.obstacles.push_back(ob.msg_);
-    dynamicObsList.obstacles.push_back(oc.msg_);
-    dynamicObsList.obstacles.push_back(od.msg_);
-    dynamicObsList.obstacles.push_back(oe.msg_);
-  }
-  //dynamicObsList.obstacles.push_back(of.msg_);
-  //dynamicObsList.obstacles.push_back(og.msg_);
-  //ROS_INFO("Exiting addHardCodedStaticObs, dynamicObsList.obstacles.size(): %i", (int)dynamicObsList.obstacles.size());
-}
-
-
-std::vector<visualization_msgs::Marker> convertObsToMarkers(const ramp_msgs::ObstacleList& obList, int lastId)
+std::vector<visualization_msgs::Marker> convertObsToMarkers()
 {
   //ROS_INFO("In convertObsToMarkers");
   std::vector<visualization_msgs::Marker> result;
-  //ROS_INFO("dynamicObsList.obstacles.size(): %i", (int)dynamicObsList.obstacles.size());
   
-  if(use_odom_topics || obList.obstacles.size() > 0 || (global_grid.info.width != 0 && global_grid.info.height != 0))
+  if(use_odom_topics || (global_grid.info.width != 0 && global_grid.info.height != 0))
   {
-    /*ROS_INFO("obList.obstacles.size(): %i", (int)obList.obstacles.size());
-    for(int i=0;i<obList.obstacles.size();i++)
-    {
-      ROS_INFO("Obstacle %i, (x,y): (%f,%f)", i, obList.obstacles[i].ob_ms.positions[0], obList.obstacles[i].ob_ms.positions[1]);
-    }*/
-
-    //int iStop = (use_odom_topics) ? obList.obstacles.size() : cir_obs.size();
-    int iStop = obList.obstacles.size();
-    //ROS_INFO("iStop: %i obList.obstacles.size(): %i cir_obs.size(): %i", iStop, (int)obList.obstacles.size(), (int)cir_obs.size());
+    //////////ROS_INFO("cir_obs.size(): %i", (int)cir_obs.size());
+    
+    //ROS_INFO("list.obstacles.size(): %i", (int)list.obstacles.size());
+    int iStop = use_odom_topics ? list.obstacles.size() : cir_obs.size();
+    //ROS_INFO("iStop: %i", iStop);
     // For each CircleOb, make a Marker
     for(int i=0;i<iStop;i++)
     {
-      //ROS_INFO("i: %i", i);
       visualization_msgs::Marker cirMarker;
       cirMarker.header.stamp = ros::Time::now();
       cirMarker.header.frame_id = global_frame;
       cirMarker.ns = "basic_shapes";
-      cirMarker.id = (populationSize * i) + lastId;
+      cirMarker.id = populationSize * i;
       //ROS_INFO("Bounding Circle id: %i popSize: %i i: %i", cirMarker.id, populationSize, i);
         
       cirMarker.type = visualization_msgs::Marker::SPHERE;
       cirMarker.action = visualization_msgs::Marker::ADD;
 
       // Set x and y
-      double x = (use_odom_topics || use_static_map) ? obList.obstacles[i].cirGroup.fitCir.center.x : cir_obs[i]->cirGroup.fitCir.center.x;
-      double y = (use_odom_topics || use_static_map) ? obList.obstacles[i].cirGroup.fitCir.center.y : cir_obs[i]->cirGroup.fitCir.center.y;
+      double x = use_odom_topics ? list.obstacles[i].cirGroup.fitCir.center.x : cir_obs[i]->cirGroup.fitCir.center.x;
+      double y = use_odom_topics ? list.obstacles[i].cirGroup.fitCir.center.y : cir_obs[i]->cirGroup.fitCir.center.y;
         
       cirMarker.pose.position.x = x;
       cirMarker.pose.position.y = y;
@@ -713,9 +561,8 @@ std::vector<visualization_msgs::Marker> convertObsToMarkers(const ramp_msgs::Obs
       cirMarker.pose.orientation.z = 0.0;
       cirMarker.pose.orientation.w = 1.0;
 
-      //double radius = (use_odom_topics || use_static_map) ? obList.obstacles[i].cirGroup.fitCir.radius : cir_obs[i]->cirGroup.fitCir.radius;
-      double radius = obList.obstacles[i].cirGroup.fitCir.radius;
-      //ROS_INFO("Fit circle i: %i x: %f y: %f r: %f", i, x, y, radius);
+      double radius = use_odom_topics ? list.obstacles[i].cirGroup.fitCir.radius : cir_obs[i]->cirGroup.fitCir.radius;
+      //ROS_INFO("x: %f y: %f r: %f", x, y, radius);
         
       // scale values are the diameter so use the radius*2
       cirMarker.scale.x = radius*2.00f;
@@ -729,26 +576,26 @@ std::vector<visualization_msgs::Marker> convertObsToMarkers(const ramp_msgs::Obs
 
       result.push_back(cirMarker);
 
-      int jStop = (use_odom_topics || use_static_map) ? obList.obstacles[i].cirGroup.packedCirs.size() : cir_obs[i]->cirGroup.packedCirs.size();
-      //ROS_INFO("jStop: %i obList.obstacles[i].cirGroup.packedCirs.size(): %i", jStop, (int)obList.obstacles[i].cirGroup.packedCirs.size());
+      int jStop = use_odom_topics ? list.obstacles[i].cirGroup.packedCirs.size() : cir_obs[i]->cirGroup.packedCirs.size();
       for(int j=0;j<jStop;j++)
       {
-        //ROS_INFO("j: %i", j);
+        //////////ROS_INFO("i: %i obs.size(): %i", i, (int)obs.size());
         visualization_msgs::Marker marker;
         marker.header.stamp = ros::Time::now();
         marker.header.frame_id = global_frame;
         marker.ns = "basic_shapes";
-
-        // FIX THIS B/C THERE ARE SOME OVERLAPS
-        marker.id = (20000 + (populationSize * i) + j) + lastId;
+        marker.id = 20000 + (populationSize * i) + j;
         //ROS_INFO("Packed cir id: %i popSize: %i i: %i j: %i", marker.id, populationSize, i, j);
         
         marker.type = visualization_msgs::Marker::SPHERE;
         marker.action = visualization_msgs::Marker::ADD;
 
         // Set x and y
-        double x = (use_odom_topics || use_static_map) ? obList.obstacles[i].cirGroup.packedCirs[j].center.x : cir_obs[i]->cirGroup.packedCirs[j].center.x;
-        double y = (use_odom_topics || use_static_map) ? obList.obstacles[i].cirGroup.packedCirs[j].center.y : cir_obs[i]->cirGroup.packedCirs[j].center.y;
+        double x = use_odom_topics ? list.obstacles[i].cirGroup.packedCirs[j].center.x : cir_obs[i]->cirGroup.packedCirs[j].center.x;
+        double y = use_odom_topics ? list.obstacles[i].cirGroup.packedCirs[j].center.y : cir_obs[i]->cirGroup.packedCirs[j].center.y;
+
+        //////////ROS_INFO("cir_obs[%i]->cir.center.x: %f cir_obs[%i]->cir.center.y: %f cir_obs[%i]->cir.radius: %f", i, cir_obs[i]->cir.center.x, i, cir_obs[i]->cir.center.y, i, cir_obs[i]->cir.radius);
+        //////////ROS_INFO("(x,y): (%f,%f) x_origin: %f y_origin: %f", x, y, x_origin, y_origin);
 
         marker.pose.position.x = x;
         marker.pose.position.y = y;
@@ -758,10 +605,7 @@ std::vector<visualization_msgs::Marker> convertObsToMarkers(const ramp_msgs::Obs
         marker.pose.orientation.z = 0.0;
         marker.pose.orientation.w = 1.0;
 
-        double radius = obList.obstacles[i].cirGroup.packedCirs[j].radius;
-        //ROS_INFO("x: %f y: %f radius: %f", x, y, radius);
-        
-        //ROS_INFO("cir_obs[%i]->packedCirs[%i].center.x: %f cir_obs[%i]->packedCirs[%i].center.y: %f cir_obs[%i]->packedCirs[%i].cir.radius: %f", i, j, x, i, j, y, i, j, radius);
+        double radius = use_odom_topics ? 0.2 : cir_obs[i]->cirGroup.packedCirs[j].radius;
 
         // scale values are the diameter so use the radius*2
         marker.scale.x = radius*2.00f;
@@ -790,27 +634,6 @@ std::vector<visualization_msgs::Marker> convertObsToMarkers(const ramp_msgs::Obs
 /** Publish the list of objects */
 void publishList(const ros::TimerEvent& e) 
 {
-  //addHardCodedStaticObs();
-  /*for(int i=0;i<dynamicObsList.obstacles.size();i++)
-  {
-    ROS_INFO("Ob %i at (%f,%f)", i, dynamicObsList.obstacles[i].fitCir.center.x, dynamicObsList.obstacles[i].fitCir.center.y); 
-  }*/
-  //ROS_INFO("List size: %i", (int)dynamicObsList.obstacles.size());
-  
-  //ROS_INFO("In publishList, staticObsList.size(): %i", (int)staticObsList.obstacles.size());
-  //ROS_INFO("In publishList, dynamicObsList.size(): %i", (int)dynamicObsList.obstacles.size());
-  list.obstacles.clear();
-  for(int i=0;i<staticObs.size();i++)
-  {
-    list.obstacles.push_back(staticObsList.obstacles[i]);
-  }
-  
-  for(int i=0;i<dynamicObsList.obstacles.size();i++)
-  {
-    list.obstacles.push_back(dynamicObsList.obstacles[i]);
-  }
-
-
   pub_obj.publish(list);
 } //End sendList
 
@@ -823,16 +646,11 @@ void publishMarkers(const ros::TimerEvent& e)
   // Publish a single Marker
   visualization_msgs::MarkerArray result;
 
-  //ROS_INFO("dynamicObsList.size(): %i staticObsList.size: %i", (int)dynamicObsList.obstacles.size(), (int)staticObsList.obstacles.size());
   
   // Get circle markers for obstacles
-  std::vector<visualization_msgs::Marker> markers = convertObsToMarkers(dynamicObsList,0);
-  std::vector<visualization_msgs::Marker> markersStatic = convertObsToMarkers(staticObsList, markers.size());
-  
-  markers.reserve(markers.size() + markersStatic.size());
-  markers.insert(markers.end(), markersStatic.begin(), markersStatic.end());
+  std::vector<visualization_msgs::Marker> markers = convertObsToMarkers();
 
-  //ROS_INFO("markers.size(): %i markersStatic.size(): %i", (int)markers.size(), (int)markersStatic.size());
+  //ROS_INFO("Publishing %i markers", (int)markers.size());
 
   result.markers = markers;
   
@@ -849,9 +667,10 @@ void publishMarkers(const ros::TimerEvent& e)
    */
   for(int i=0;i<cir_obs.size();i++)
   {
-    ////////ROS_INFO("Creating text and arrow for marker i: %i", i);
+    /*////////ROS_INFO("Creating text and arrow for marker i: %i", i);
     ////////ROS_INFO("prev_velocities.size(): %i", (int)prev_velocities.size());
     ////////ROS_INFO("prev_velocities[%i].size(): %i", i, (int)prev_velocities[i].size());
+    ////////ROS_INFO("Marker %i position: (%f, %f) v: %f", i, markers[i].pose.position.x, markers[i].pose.position.y, prev_velocities[prev_velocities.size()-1][i].v);*/
     visualization_msgs::Marker text;
     visualization_msgs::Marker arrow;
 
@@ -876,7 +695,6 @@ void publishMarkers(const ros::TimerEvent& e)
 
     text.ns   = "basic_shapes";
     arrow.ns  = "basic_shapes";
-
     
     text.type   = visualization_msgs::Marker::TEXT_VIEW_FACING;
     arrow.type  = visualization_msgs::Marker::ARROW;
@@ -968,10 +786,6 @@ void publishMarkers(const ros::TimerEvent& e)
   text.lifetime = ros::Duration(rvizLifetime);
 
   result.markers.push_back(text);
-  /*for(int i=0;i<result.markers.size();i++)
-  {
-    ROS_INFO("Marker %i, id: %i", i, result.markers[i].id);
-  }*/
   
   // Draw the polygon lines
   /*result.markers.push_back(polygonLines);
@@ -990,7 +804,7 @@ void publishMarkers(const ros::TimerEvent& e)
   //ROS_INFO("result.markers.size(): %i", (int)result.markers.size());
 
   pub_rviz.publish(result);
-  //ROS_INFO("Exiting publishMarkers");
+  //////ROS_INFO("Exiting publishMarkers");
 }
 
 
@@ -1079,15 +893,15 @@ double getDistToFOV(Point p, double angle)
 
 std::vector<Velocity> predictVelocities(const std::vector<CircleMatch> cm, const ros::Duration d_elapsed)
 {
-  //ROS_INFO("In predictVelocities, d_elapsed: %f", d_elapsed.toSec());
-  //ROS_INFO("cir_obs.size(): %i cm.size(): %i", (int)cir_obs.size(), (int)cm.size());
+  //////ROS_INFO("In predictVelocities, d_elapsed: %f", d_elapsed.toSec());
+  //////ROS_INFO("cir_obs.size(): %i cm.size(): %i", (int)cir_obs.size(), (int)cm.size());
 
   std::vector<Velocity> result;
   
   // For each circle obstacle,
   for(int i=0;i<cir_obs.size();i++)
   {
-    //ROS_INFO("CircleOb %i prevCirs.size(): %i", i, (int)cir_obs[i]->prevCirs.size());
+    //////ROS_INFO("CircleOb %i prevCirs.size(): %i", i, (int)cir_obs[i]->prevCirs.size());
     //////ROS_INFO("Current: (%f, %f)", cir_obs[i]->cir.center.x, cir_obs[i]->cir.center.y);
 
     Velocity temp;
@@ -1097,18 +911,20 @@ std::vector<Velocity> predictVelocities(const std::vector<CircleMatch> cm, const
     {
       // Prev needs to be based on the global x,y
       int i_prev = cir_obs[i]->prevCirs.size()-1;
-      //ROS_INFO("i_prev: %i", i_prev);
+      //////ROS_INFO("i_prev: %i", i_prev);
       //////ROS_INFO("Prev: (%f, %f)", cir_obs[i]->prevCirs[i_prev].center.x, cir_obs[i]->prevCirs[i_prev].center.y);
       double x_dist = cir_obs[i]->cirGroup.fitCir.center.x - cir_obs[i]->prevCirs[i_prev].center.x;
       double y_dist = cir_obs[i]->cirGroup.fitCir.center.y - cir_obs[i]->prevCirs[i_prev].center.y;
       //double dist = sqrt( pow(x_dist,2) + pow(y_dist,2) );
 
       double dist = util.positionDistance(cir_obs[i]->prevCirs[i_prev].center.x, cir_obs[i]->prevCirs[i_prev].center.y, cir_obs[i]->cirGroup.fitCir.center.x, cir_obs[i]->cirGroup.fitCir.center.y);
+      //////ROS_INFO("dist: %f", dist);
 
       //////ROS_INFO("cir_obs.size(): %i i: %i", (int)cir_obs.size(), i);
       std::vector<double> obPos;
       obPos.push_back(cir_obs[i]->cirGroup.fitCir.center.x);
       obPos.push_back(cir_obs[i]->cirGroup.fitCir.center.y);
+      //////ROS_INFO("After obPos");
       
 
       double theta = atan2(y_dist, x_dist);
@@ -1120,6 +936,7 @@ std::vector<Velocity> predictVelocities(const std::vector<CircleMatch> cm, const
         // Get cm for ob
         for(int j=0;j<cm.size();j++)
         {
+          //////ROS_INFO("j: %i cm.size(): %i", j, (int)cm.size());
           if(cm[j].i_cir == i)
           {
             //////////ROS_INFO("dist: %f delta_r: %f", dist, cm[j].delta_r);
@@ -1254,27 +1071,27 @@ CircleOb* createCircleOb(CircleGroup temp)
 
 void transformCostmap(nav_msgs::OccupancyGrid& g)
 {
-  //ROS_INFO("In transformCostmap");
+  ////ROS_INFO("In transformCostmap");
   tf::Vector3 p(g.info.origin.position.x, g.info.origin.position.y, 0);
   float res = g.info.resolution;
   int w = g.info.width;
   int h = g.info.height;
-  //ROS_INFO("p: (%f,%f) w: %i h: %i c_max (w): %f r_max (h): %f", p.getX(), p.getY(), w, h , global_grid.info.resolution / w, global_grid.info.resolution / h);
+  ////ROS_INFO("p: (%f,%f) w: %i h: %i c_max (w): %f r_max (h): %f", p.getX(), p.getY(), w, h , global_costmap.info.resolution / w, global_costmap.info.resolution / h);
 
-  tf::Vector3 p_global(global_grid.info.origin.position.x, global_grid.info.origin.position.y, 0);
-  //ROS_INFO("p_global: (%f,%f)", p_global.getX(), p_global.getY());
+  tf::Vector3 p_global(global_costmap.info.origin.position.x, global_costmap.info.origin.position.y, 0);
+  ////ROS_INFO("p_global: (%f,%f)", p_global.getX(), p_global.getY());
 
  
-  float delta_x = g.info.origin.position.x - global_grid.info.origin.position.x;
-  float delta_y = g.info.origin.position.y - global_grid.info.origin.position.y;
+  float delta_x = g.info.origin.position.x - global_costmap.info.origin.position.x;
+  float delta_y = g.info.origin.position.y - global_costmap.info.origin.position.y;
   int i_dx = delta_x / res;
-  int i_dy = (delta_y / res) * global_grid.info.width;
+  int i_dy = (delta_y / res) * global_costmap.info.width;
   ////ROS_INFO("delta_x: %f delta_y: %f i_dx: %i i_dy: %i", delta_x, delta_y, i_dx, i_dy);
 
-  float x_global_max = (global_grid.info.width * global_grid.info.resolution) + global_grid.info.origin.position.x;
-  float y_global_max = (global_grid.info.height * global_grid.info.resolution) + global_grid.info.origin.position.y;
-  float x_global_min = global_grid.info.origin.position.x;
-  float y_global_min = global_grid.info.origin.position.y;
+  float x_global_max = (global_costmap.info.width * global_costmap.info.resolution) + global_costmap.info.origin.position.x;
+  float y_global_max = (global_costmap.info.height * global_costmap.info.resolution) + global_costmap.info.origin.position.y;
+  float x_global_min = global_costmap.info.origin.position.x;
+  float y_global_min = global_costmap.info.origin.position.y;
 
   ////ROS_INFO("x_global_max: %f y_global_max: %f", x_global_max, y_global_max);
 
@@ -1297,13 +1114,13 @@ void transformCostmap(nav_msgs::OccupancyGrid& g)
    
 
     // Get index on global costmap
-    int c_global = ((i % g.info.width) % global_grid.info.width) + 1;
+    int c_global = ((i % g.info.width) % global_costmap.info.width) + 1;
     // divide to get rid of remainder, then re-multiply by width
-    int r_global = (i / g.info.width) * global_grid.info.width;
+    int r_global = (i / g.info.width) * global_costmap.info.width;
     
     ////ROS_INFO("Before considering origin, c_global: %i r_global: %i", c_global, r_global);
 
-    c_global += i_dx ;//<= -(c/res) ? -(c/res) * global_grid.info.width : i_dx;
+    c_global += i_dx ;//<= -(c/res) ? -(c/res) * global_costmap.info.width : i_dx;
     r_global += i_dy;
 
     //int i_global = (c_global > -1 && c_global < 901 && r_global > -1 && r_global < 10001) ? r_global + c_global : -1;
@@ -1311,7 +1128,7 @@ void transformCostmap(nav_msgs::OccupancyGrid& g)
    
     // Print info 
     ////ROS_INFO("x_global_min, max: (%f,%f) y_global_min, max: (%f,%f)", x_global_min, x_global_max, y_global_min, y_global_max);
-    ////ROS_INFO("x: %f y: %f c_global: %i r_global: %i i: %i i_global: %i global.size(): %i", x, y, c_global, r_global, i, i_global, (int)global_grid.data.size());
+    ////ROS_INFO("x: %f y: %f c_global: %i r_global: %i i: %i i_global: %i global.size(): %i", x, y, c_global, r_global, i, i_global, (int)global_costmap.data.size());
 
     if(x >= x_global_min && x < x_global_max && y >= y_global_min && y < y_global_max)
     {
@@ -1325,12 +1142,12 @@ void transformCostmap(nav_msgs::OccupancyGrid& g)
     }
 
 
-    if(i_global > -1 && i_global < global_grid.data.size())
+    if(i_global > -1 && i_global < global_costmap.data.size())
     {
-      global_grid.data[i_global] = g.data[i];
+      global_costmap.data[i_global] = g.data[i];
     }
   }
-  //////////ROS_INFO("global_grid.data.size(): %i", (int)global_grid.data.size());
+  //////////ROS_INFO("global_costmap.data.size(): %i", (int)global_costmap.data.size());
 }
 
 
@@ -1706,6 +1523,8 @@ void cropCostmap(const nav_msgs::OccupancyGridConstPtr grid, nav_msgs::Occupancy
 {
   //////////ROS_INFO("In cropCostmap");
 
+  // This are the static bounds
+  // a is the lower-left corner, then go in cw order
   float res = grid->info.resolution;
   float w = grid->info.width  * res;
   float h = grid->info.height * res;
@@ -1716,10 +1535,8 @@ void cropCostmap(const nav_msgs::OccupancyGridConstPtr grid, nav_msgs::Occupancy
   float x_max=ranges[0].max;
   float y_max=ranges[1].max;
   
-  //ROS_INFO("costmap origin: (%f,%f) width: %i height: %i resolution: %f w: %f h: %f", grid->info.origin.position.x, grid->info.origin.position.y, grid->info.width, grid->info.height, grid->info.resolution, w, h);
+  //////////ROS_INFO("costmap origin: (%f,%f) width: %i height: %i resolution: %f w: %f h: %f", grid->info.origin.position.x, grid->info.origin.position.y, grid->info.width, grid->info.height, grid->info.resolution, w, h);
 
-  // These are the static bounds
-  // a is the lower-left corner, then go in cw order
   // a = costmap origin
   tf::Vector3 p_a(grid->info.origin.position.x, grid->info.origin.position.y, 0);
 
@@ -1753,30 +1570,19 @@ void cropCostmap(const nav_msgs::OccupancyGridConstPtr grid, nav_msgs::Occupancy
   float delta_x_max = fabs(x_max - p_c.getX());
   float delta_y_min = fabs(y_min - p_a.getY());
   float delta_y_max = fabs(y_max - p_c.getY());
-  //ROS_INFO("delta_x_min: %f delta_x_max: %f delta_y_min: %f delta_y_max: %f", delta_x_min, delta_x_max, delta_y_min, delta_y_max);
+  //////////ROS_INFO("delta_x_min: %f delta_x_max: %f delta_y_min: %f delta_y_max: %f", delta_x_min, delta_x_max, delta_y_min, delta_y_max);
   
   int x_min_ind = p_a.getX() < x_min ? delta_x_min / res : 0;
   int x_max_ind = p_c.getX() > x_max ? delta_x_max / res : 0;
   int y_min_ind = p_a.getY() < y_min ? delta_y_min / res : 0;
   int y_max_ind = p_c.getY() > y_max ? delta_y_max / res : 0;
-  //ROS_INFO("x_min_ind: %i x_max_ind: %i y_min_ind: %i y_max_ind: %i", x_min_ind, x_max_ind, y_min_ind, y_max_ind);
+  //////////ROS_INFO("x_min_ind: %i x_max_ind: %i y_min_ind: %i y_max_ind: %i", x_min_ind, x_max_ind, y_min_ind, y_max_ind);
 
   int width_new   = grid->info.width  - x_max_ind - x_min_ind;
   int height_new  = grid->info.height - y_max_ind - y_min_ind;
-  if(width_new > height_new)
-  {
-    width_new = height_new;
-    x_min_ind++;
-  }
-  else if(height_new > width_new)
-  {
-    height_new = width_new;
-    y_min_ind++;
-  }
-  
-  /*ROS_INFO("width_new: %i height_new: %i", width_new, height_new);
-  ROS_INFO("grid->info.height-y_max_ind: %i", grid->info.height-y_max_ind);
-  ROS_INFO("grid->info.width-x_max_ind: %i", grid->info.width-x_max_ind);*/
+  /*////////ROS_INFO("width_new: %i height_new: %i", width_new, height_new);
+  ////////ROS_INFO("grid->info.height-y_max_ind: %i", grid->info.height-y_max_ind);
+  ////////ROS_INFO("grid->info.width-x_max_ind: %i", grid->info.width-x_max_ind);*/
   for(int c=y_min_ind;c<grid->info.height-y_max_ind;c++)
   {
     int c_offset = (c*grid->info.width);
@@ -1889,8 +1695,8 @@ void initGlobalMap()
 
 void setRobotPos(const ramp_msgs::MotionState& ms)
 {
-  //ROS_INFO("In setRobotPos");
-  //ROS_INFO("ms: (%f,%f,%f)", ms.positions[0], ms.positions[1], ms.positions[2]);
+  ////ROS_INFO("In setRobotPos");
+  ////ROS_INFO("ms: (%f,%f,%f)", ms.positions[0], ms.positions[1], ms.positions[2]);
   robotState.positions.clear();
   
   // Set new position
@@ -1902,8 +1708,7 @@ void setRobotPos(const ramp_msgs::MotionState& ms)
 
   viewMinMax.push_back( util.displaceAngle(robotState.positions[2], -fovAngle/2.0) );
   viewMinMax.push_back( util.displaceAngle(robotState.positions[2], fovAngle/2.0) );
-  //ROS_INFO("viewMinMax: [%f,%f]", viewMinMax[0], viewMinMax[1]);
-  //ROS_INFO("global_frame: %s", global_frame.c_str());
+  //////////ROS_INFO("viewMinMax: [%f,%f]", viewMinMax[0], viewMinMax[1]);
 
   /* 
    * Create markers in rviz to display this information
@@ -2097,11 +1902,30 @@ void convertCircleToGlobal(const nav_msgs::OccupancyGrid& grid, Circle& cir)
 {
   double x_origin = grid.info.origin.position.x;
   double y_origin = grid.info.origin.position.y;
-  //ROS_INFO("x_origin: %f, y_origin: %f resolution: %f", x_origin, y_origin, grid.info.resolution);
 
   cir.center.x = (cir.center.x * grid.info.resolution) + x_origin;
   cir.center.y = (cir.center.y * grid.info.resolution) + y_origin;
   cir.radius *= grid.info.resolution;
+}
+
+void convertGroups()
+{
+ 
+  // Convert fit circles in outer loop
+  for(int i=0;i<cirGroups.size();i++)
+  {
+    //////ROS_INFO("Fit circle for cirGroup %i center: (%f,%f) radius: %f", i, cirGroups[i].fitCir.center.x, cirGroups[i].fitCir.center.y, cirGroups[i].fitCir.radius);
+    convertCircleToGlobal(global_grid, cirGroups[i].fitCir);
+    //////ROS_INFO("New point: (%f,%f) New radius: %f", cirGroups[i].fitCir.center.x, cirGroups[i].fitCir.center.y, cirGroups[i].fitCir.radius);
+
+    // Convert packed circles in inner loop
+    for(int j=0;j<cirGroups[i].packedCirs.size();j++)
+    {
+      //////////ROS_INFO("Packed circle %i center: (%f,%f) radius: %f ", j, cirGroups[i].packedCirs[j].center.x, cirGroups[i].packedCirs[j].center.y, cirGroups[i].packedCirs[j].radius);
+      convertCircleToGlobal(global_grid, cirGroups[i].packedCirs[j]);
+      //////////ROS_INFO("New Point: (%f,%f) New Radius: %f ", cirGroups[i].packedCirs[j].center.x, cirGroups[i].packedCirs[j].center.y, cirGroups[i].packedCirs[j].radius);
+    }
+  }
 }
 
 void convertGroups(const nav_msgs::OccupancyGrid& grid, std::vector<CircleGroup>& groups)
@@ -2169,7 +1993,7 @@ void populateObstacleList(const std::vector<Velocity>& velocities)
   //////////ROS_INFO("In populateObstacleList");
   
   obs.clear();
-  dynamicObsList.obstacles.clear();
+  list.obstacles.clear();
   for(int i=0;i<cir_obs.size();i++)
   {
     //////////ROS_INFO("Creating obstacle, prevCirs.size(): %i prevTheta.size(): %i", (int)cir_obs[i]->prevCirs.size(), (int)cir_obs[i]->prevTheta.size());
@@ -2181,8 +2005,8 @@ void populateObstacleList(const std::vector<Velocity>& velocities)
     o.update(cir_obs[i]->cirGroup, velocities[i], theta);
     
     obs.push_back(o);
-    dynamicObsList.obstacles.push_back(o.msg_);
-    //ROS_INFO("ob %i position: (%f,%f)", i, obs[i].msg_.ob_ms.positions[0], obs[i].msg_.ob_ms.positions[1]);
+    list.obstacles.push_back(o.msg_);
+    //////////ROS_INFO("ob %i position: (%f,%f)", i, obs[i].msg_.ob_ms.positions[0], obs[i].msg_.ob_ms.positions[1]);
   }
   
   //////////ROS_INFO("Exiting populateObstacleList");
@@ -2195,14 +2019,14 @@ void populateObstacleList(const std::vector<Velocity>& velocities)
  */
 void computeVelocities(const std::vector<CircleMatch> cm, const ros::Duration d_elapsed, std::vector<Velocity>& result)
 {
-  //ROS_INFO("In computeVelocities");
+  ////ROS_INFO("In computeVelocities");
   result = predictVelocities(cm, d_elapsed);
 
   // Average the velocities
   for(int i=0;i<cir_obs.size();i++)
   {
-    //ROS_INFO("i: %i cir_obs.size(): %i", i, (int)cir_obs.size());
-    //ROS_INFO("result.size(): %i cir_obs[%i]->prevTheta.size(): %i", (int)result.size(), i, (int)cir_obs.size());
+    //////ROS_INFO("i: %i cir_obs.size(): %i", i, (int)cir_obs.size());
+    //////ROS_INFO("result.size(): %i cir_obs[%i]->prevTheta.size(): %i", (int)result.size(), i, (int)cir_obs.size());
 
     cir_obs[i]->vels.push_back(result[i]);
     if(cir_obs[i]->vels.size() > num_velocity_count)
@@ -2258,184 +2082,6 @@ void computeVelocities(const std::vector<CircleMatch> cm, const ros::Duration d_
 }
 
 
-void staticMapCb(const nav_msgs::OccupancyGridConstPtr grid)
-{
-  ROS_INFO("In staticMapCb");
-  
-  if(staticObs.size() == 0)
-  {
-    staticMap = *grid;
-    ros::Time tStart = ros::Time::now();
-    CirclePacker c(grid); // (If using modified costmap)
-    
-    c.setStaticMap(grid);
-    c.staticMap_ = *grid;
-
-    // Pixels seem to be correct
-    staticObs = c.getGroupsForStaticMap();
-    
-
-    convertGroups(staticMap, staticObs);
-
-    //ROS_INFO("staticObs.size(): %i", (int)staticObs.size());
-    ros::Duration d = ros::Time::now() - tStart;
-    for(int i=0;i<staticObs.size();i++)
-    {
-      /*ROS_INFO("static ob %i - Center: (%f,%f) Radius: %f packedCirs.size(): %i", i, staticObs[i].fitCir.center.x, staticObs[i].fitCir.center.y, staticObs[i].fitCir.radius, (int)staticObs[i].packedCirs.size());
-      for(int j=0;j<staticObs[i].packedCirs.size();j++)
-      {
-        ROS_INFO("  Packed circle %i: %f,%f Radius=%f", j, staticObs[i].packedCirs[j].center.x, staticObs[i].packedCirs[j].center.y, staticObs[i].packedCirs[j].radius);
-      }*/
-      Obstacle o(staticObs[i]);
-      staticObsList.obstacles.push_back(o.msg_);
-    }
-    //ROS_INFO("Elapsed time: %f", d.toSec());
-  }
-  else
-  {
-    //ROS_INFO("Already got static map obstacles");
-  }
-  gotPersistent = true;
-}
-
-
-int removeStaticOccupiedPixels(nav_msgs::OccupancyGrid& grid)
-{
-  int countMatches = 0;
-
-  // Use staticMap and global_grid
-  // Rotation is always identity so the only tf information is the difference in origin
-  float dx = grid.info.origin.position.x - staticMap.info.origin.position.x;
-  float dy = grid.info.origin.position.y - staticMap.info.origin.position.y;
-
-  int drows = dy / grid.info.resolution;
-  int dcols = dx / grid.info.resolution;
-
-  //ROS_INFO("dx: %f dy: %f drows: %i dcols: %i", dx, dy, drows, dcols);
-
-  // For each point in grid
-  for(int i=0;i<grid.data.size();i++)
-  {
-    // Get the r,c value of it
-    int r = i / grid.info.width;
-    int c = i % grid.info.width;
-
-    // Now convert r and c to staticMap r and c
-    // Check more about +1 and -1, what if in different quadrants?
-    int staticR = r + drows;
-    int staticC = c + dcols;
-    int staticI = (staticR * staticMap.info.width) + staticC;
-
-    int v = staticMap.data[staticI];
-    /*ROS_INFO("v: %i v: %i r: %i c: %i x,y: %f,%f staticR: %i staticC: %i x,y: %f,%f staticI: %i", 
-        v, grid.data[i], r, c, 
-        (c*grid.info.resolution)+grid.info.origin.position.y, 
-        (r*grid.info.resolution)+grid.info.origin.position.x, 
-        staticR, staticC, 
-        (staticC*grid.info.resolution)+staticMap.info.origin.position.y, 
-        (staticR*grid.info.resolution)+staticMap.info.origin.position.x,
-        staticI);*/
-    
-    if(v != 0 && grid.data[i] > 0)
-    {
-      countMatches++;
-      grid.data[i] = 0;
-    } 
-  }
-
-  return countMatches;
-}
-
-
-
-/*
- * Hilbert map should be a global costmap
- */
-void hilbertMapCb(const nav_msgs::OccupancyGridConstPtr grid)
-{
-  ROS_INFO("In hilbertMapCb");
-  hilbertMap = *grid;
-  ROS_INFO("hilbertMap.data.size(): %i", (int)hilbertMap.data.size());
-}
-
-
-
-void FillInUnknownWithHmap(const nav_msgs::OccupancyGrid& grid, nav_msgs::OccupancyGrid& result)
-{
-  //ROS_INFO("In FillInUnknownWithHmap");
-
-  if(hilbertMap.data.size() == 0 || grid.data.size() == 0)
-  {
-    ROS_INFO("Have not received hilbert map or global grid yet");
-    ROS_ERROR("hilbertMap.data.size(): %i grid.data.size(): %i", (int)hilbertMap.data.size(), (int)grid.data.size());
-  }
-  else if(hilbertMap.data.size() != grid.data.size())
-  {
-    ROS_ERROR("hilbertMap.data.size() != grid.data.size()");
-    ROS_ERROR("hilbertMap.data.size(): %i grid.data.size(): %i", (int)hilbertMap.data.size(), (int)grid.data.size());
-    ROS_ERROR("grid.w: %i grid.h: %i", grid.info.width, grid.info.height);
-  }
-  else
-  {
-    result = grid;
-    for(int i=0;i<grid.data.size();i++)
-    {
-      // If unknown space, then use hilbert map value (prob. of location being occupied)
-      if(grid.data[i] == -1) 
-      {
-        result.data[i] = hilbertMap.data[i];
-      }
-    }
-  }
-
-  //ROS_INFO("Exiting FillInUnknownWithHmap");
-}
-
-
-
-/*
- * grid should already be transformed to global coordinates
- * For each occupied pixel in grid, set pixel in hmap to 1
- */
-void combineCbAndHmap(const nav_msgs::OccupancyGrid& grid, nav_msgs::OccupancyGrid& result)
-{
-  ROS_INFO("In combineCbAndHmap");
-
-  if(hilbertMap.data.size() == 0 || grid.data.size() == 0)
-  {
-    ROS_INFO("Have not received hilbert map or global grid yet");
-    //ROS_ERROR("hilbertMap.data.size(): %i grid.data.size(): %i", (int)hilbertMap.data.size(), (int)grid.data.size());
-  }
-  else if(hilbertMap.data.size() != grid.data.size())
-  {
-    ROS_ERROR("hilbertMap.data.size() != grid.data.size()");
-    //ROS_ERROR("hilbertMap.data.size(): %i grid.data.size(): %i", (int)hilbertMap.data.size(), (int)grid.data.size());
-  }
-  else
-  {
-    //ROS_INFO("In else");
-    result = hilbertMap;
-    int count=0;
-    for(int i=0;i<grid.data.size();i++)
-    {
-      if(grid.data[i] > 0) 
-      {
-        count++;
-        result.data[i] = 100;
-        //result.data.push_back(255);
-      }
-      else
-      {
-        result.data.push_back(hilbertMap.data[i]);
-      }
-    }
-    //ROS_INFO("Num changed pixels: %i", count);
-  }
-
-  //ROS_INFO("Exiting combineCbAndHmap");
-}
-
-
 void persistGridCb(const nav_msgs::OccupancyGridConstPtr grid)
 {
   //ROS_INFO("In persistGridCb");
@@ -2454,66 +2100,78 @@ void persistGridCb(const nav_msgs::OccupancyGridConstPtr grid)
   gotPersistent = true;
 }
 
+// {
+//   ROS_INFO("In staticMapCb");
+  
+//   staticMap = *grid;
+//   ros::Time tStart = ros::Time::now();
+//   CirclePacker c(grid); // (If using modified costmap)
+  
+//   c.setStaticMap(grid);
+//   c.staticMap_ = *grid;
+
+//   staticObs = c.getGroupsForStaticMap();
+  
+
+//   convertGroups(staticMap, staticObs);
+
+//   //ROS_INFO("staticObs.size(): %i", (int)staticObs.size());
+//   ros::Duration d = ros::Time::now() - tStart;
+//   for(int i=0;i<staticObs.size();i++)
+//   {
+//     /*ROS_INFO("static ob %i - Center: (%f,%f) Radius: %f packedCirs.size(): %i", i, staticObs[i].fitCir.center.x, staticObs[i].fitCir.center.y, staticObs[i].fitCir.radius, (int)staticObs[i].packedCirs.size());
+//     for(int j=0;j<staticObs[i].packedCirs.size();j++)
+//     {
+//       ROS_INFO("  Packed circle %i: %f,%f Radius=%f", j, staticObs[i].packedCirs[j].center.x, staticObs[i].packedCirs[j].center.y, staticObs[i].packedCirs[j].radius);
+//     }*/
+//     Obstacle o(staticObs[i]);
+//     list.obstacles.push_back(o.msg_);
+//   }
+//   //ROS_INFO("Elapsed time: %f", d.toSec());
+//   gotPersistent = true;
+// }
+
 
 
 void costmapCb(const nav_msgs::OccupancyGridConstPtr grid)
 {
-  /*ROS_INFO("**************************************************");
-  ROS_INFO("In costmapCb");
-  ROS_INFO("**************************************************");*/
+  /*//ROS_INFO("**************************************************");
+  //ROS_INFO("In costmapCb");
+  //ROS_INFO("**************************************************");*/
   ros::Duration d_elapsed = ros::Time::now() - t_last_costmap;
   t_last_costmap = ros::Time::now();
   high_resolution_clock::time_point tStart = high_resolution_clock::now();
-  //ROS_INFO("grid (w,h): (%i,%i) origin: (%f,%f)", grid->info.width, grid->info.height, grid->info.origin.position.x, grid->info.origin.position.y);
+  ////ROS_INFO("grid (w,h): (%i,%i) origin: (%f,%f)", grid->info.width, grid->info.height, grid->info.origin.position.x, grid->info.origin.position.y);
 
   // Consolidate this occupancy grid with prev ones
   nav_msgs::OccupancyGrid accumulated_grid;
-    
-  accumulated_grid = *grid;
-  global_grid = *grid;
 
   if(cropMap)
   {
-    //ROS_INFO("In if");
     /*
      * Only use half of the costmap since the kinect can only see in front of the robot
      */
-
+    
     // Update global grid
     nav_msgs::OccupancyGrid cropped;
     cropCostmap(grid, cropped);
-    //cropCostmapForHmapExp(grid, cropped);
-    //ROS_INFO("Done cropping costmap");
 
     transformCostmap(cropped);
-    //ROS_INFO("Done transforming costmap");
+    pub_global_costmap.publish(global_costmap);
 
     double grid_resolution = grid->info.resolution; 
     
     global_grid = cropped;
     ////ROS_INFO("global grid (w,h): (%i,%i)", global_grid.info.width, global_grid.info.height);
     
-    // Call this
-    if(use_static_map)
-    {
-      int countMatches = removeStaticOccupiedPixels(global_grid);
-      //ROS_INFO("%i pixels matched and changed", countMatches);
-    }
-    
-    
 
     //////////ROS_INFO("Resolution: width: %i height: %i", grid->info.width, grid->info.height);
-    accumulateCostmaps(global_grid, prev_grids, accumulated_grid);
+    accumulateCostmaps(global_costmap, prev_grids, accumulated_grid);
     
-    // Done editing global_costmap
-    pub_global_costmap.publish(global_grid);
-
-    // Why was this here?
     // Set global_grid 
-    //global_grid = global_costmap;
-    ////ROS_INFO("global grid (w,h): (%i,%i)", global_grid.info.width, global_grid.info.height);
-    //ROS_INFO("global costmap (w,h): (%i,%i)", global_costmap.info.width, global_costmap.info.height);
-    //ROS_INFO("accumulated costmap (w,h): (%i,%i)", accumulated_grid.info.width, accumulated_grid.info.height);
+    global_grid = global_costmap;
+    //////////ROS_INFO("global grid (w,h): (%i,%i)", global_grid.info.width, global_grid.info.height);
+    //////////ROS_INFO("global costmap (w,h): (%i,%i)", global_costmap.info.width, global_costmap.info.height);
     
     //////////ROS_INFO("Finished getting consolidated_grid");
     
@@ -2526,14 +2184,16 @@ void costmapCb(const nav_msgs::OccupancyGridConstPtr grid)
     }
 
     // Publish the modified costmap(s)
+    //pub_half_costmap.publish(half);
     pub_cons_costmap.publish(accumulated_grid);
     //////ROS_INFO("accumulated grid (w,h): (%i,%i)", accumulated_grid.info.width, accumulated_grid.info.height);
   }
   else
   {
+    ////ROS_INFO("In else");
     accumulated_grid = *grid;
     global_grid = *grid;
-  
+    
     // ***
     transformCostmap(global_grid);
     pub_global_costmap.publish(global_costmap);
@@ -2541,32 +2201,22 @@ void costmapCb(const nav_msgs::OccupancyGridConstPtr grid)
     double grid_resolution = grid->info.resolution; 
     
     global_grid = *grid;
-    
-    // Call this
-    if(use_static_map)
-    {
-      int countMatches = removeStaticOccupiedPixels(global_grid);
-      //ROS_INFO("%i pixels matched and changed", countMatches);
-    }
-    
+    ////ROS_INFO("global grid (w,h): (%i,%i)", global_grid.info.width, global_grid.info.height);
     
 
     //////////ROS_INFO("Resolution: width: %i height: %i", grid->info.width, grid->info.height);
-    accumulateCostmaps(global_grid, prev_grids, accumulated_grid);
-    //ROS_INFO("After accumulateCostmaps");
-   
-    // Set global_grid 
-    // Why have separate 'global_costmap'?
-    //global_grid = global_costmap;
+    accumulateCostmaps(global_costmap, prev_grids, accumulated_grid);
     
+    // Set global_grid 
+    global_grid = global_costmap;
     //////////ROS_INFO("global grid (w,h): (%i,%i)", global_grid.info.width, global_grid.info.height);
     //////////ROS_INFO("global costmap (w,h): (%i,%i)", global_costmap.info.width, global_costmap.info.height);
     
     //////////ROS_INFO("Finished getting consolidated_grid");
     
     // Push this grid onto prev_grids
-    prev_grids.push_back(global_grid);
-    //prev_grids.push_back(global_costmap);
+    //prev_grids.push_back(global_grid);
+    prev_grids.push_back(global_costmap);
     if(prev_grids.size() > num_costmaps_accumulate)
     {
       prev_grids.erase(prev_grids.begin(), prev_grids.begin()+1);
@@ -2586,16 +2236,7 @@ void costmapCb(const nav_msgs::OccupancyGridConstPtr grid)
 
   //////////ROS_INFO("consolidated_grid.data.size(): %i", (int)consolidated_grid.data.size());
   ////////ROS_INFO("cg_ptr->data.size(): %i", (int)cg_ptr->data.size());
-  
 
-
-  if(use_hilbert_map)
-  {
-    nav_msgs::OccupancyGrid combined;
-    combineCbAndHmap(global_grid, combined);
-    // FillInUnknownWithHmap(global_grid, combined);
-    pub_combinedHmap.publish(combined);
-  }
 
 
   /*
@@ -2604,212 +2245,203 @@ void costmapCb(const nav_msgs::OccupancyGridConstPtr grid)
    ********************************************
    */
 
-  // Check if we are detecting obstacles or not
-  // Sometimes we may just want costmap information, like when we are collecting training data
-  if(detect_obs)
+  CirclePacker c(cg_ptr); // (If using modified costmap)
+  //CirclePacker c(grid); // (If not modifying costmap)
+  
+  // Do they have the same obstacle indices?
+  //std::vector<Circle> cirs = c.goMyBlobs();
+  cirGroups.clear();
+  cirGroups = c.getGroups(largeObs);
+  polygonLines = c.polygonMarker_;
+  pLines = c.pMarkers_;
+  cLines = c.cMarkers_;
+  
+
+  //////ROS_INFO("cirGroups.size(): %i", (int)cirGroups.size());
+  for(int i=0;i<cirGroups.size();i++)
   {
-
-    CirclePacker c(cg_ptr); // (If using modified costmap)
-    //CirclePacker c(grid); // (If not modifying costmap)
-    
-    // Do they have the same obstacle indices?
-    //std::vector<Circle> cirs = c.goMyBlobs();
-    cirGroups.clear();
-    cirGroups = c.getGroups(staticObs, global_grid.info.origin.position.x, global_grid.info.origin.position.y, global_grid.info.resolution);
-    polygonLines = c.polygonMarker_;
-    pLines = c.pMarkers_;
-    cLines = c.cMarkers_;
-
-    //ROS_INFO("Finished getting Circle Groups");
-    
-
-    /*ROS_INFO("cirGroups.size(): %i", (int)cirGroups.size());
-    for(int i=0;i<cirGroups.size();i++)
-    {
-      ROS_INFO("cirGroups[%i].fitCir.size: %f", i, cirGroups[i].fitCir.radius);
-      ROS_INFO("cirGroups[%i].packedCirs.size(): %i", i, (int)cirGroups[i].packedCirs.size());
-    }*/
-
-
-
-
-    /*
-     ********************************************
-     * Done finding circles on latest costmap
-     ********************************************
-     */
-
-    /*
-     * Convert centers and radii to the global frame
-     */ 
-    //convertGroups(global_grid, cirGroups);
-    /*for(int i=0;i<cirGroups.size();i++)
-    {
-      ////ROS_INFO("cirGroups[%i].fitCir.size: %f", i, cirGroups[i].fitCir.radius);
-    }*/
-
-
-
-     /*
-      * Check if obstacles are in viewing angle
-      */
-    if(remove_outside_fov)
-    {
-      int i=0;
-      while(i<cirGroups.size())
-      {
-        if(!checkViewingObstacle(cirGroups[i].fitCir))
-        {
-          cirGroups.erase(cirGroups.begin()+i, cirGroups.begin()+i+1);
-          i--;
-        }
-
-        i++;
-      }
-    }
-    //ROS_INFO("After checking viewing angle, cirGroups.size(): %i", (int)cirGroups.size());
-   
-
-    /*
-     * Data association
-     * Do the data associate before kf updates so that 
-     * 1) cir_obs.cir is set before doing update
-     * 2) the measurement for each cir_ob is correct before doing update
-     */
-    std::vector<CircleMatch> cm = dataAssociation(cirGroups);
-    //ROS_INFO("Done checking data association");
-
-
-    
-    /*
-     * Call the Kalman filter
-     */
-     std::vector<CircleGroup> circles_current = updateKalmanFilters(cirGroups, cm);
-     //ROS_INFO("After updateKalmanFilters");
-
-    
-
-     
-    /*
-     * Circle positions are finalized at this point
-     */
-
-
-
-
-     /*
-      * Predict orientations
-      */
-     computeOrientations();
-     //ROS_INFO("After computeOrientations");
-    
-    
-    /*
-     * Predict velocities
-     */
-     std::vector<Velocity> velocities;
-     computeVelocities(cm, d_elapsed, velocities);
-     prev_velocities.push_back(velocities);
-     //ROS_INFO("After computeVelocities");
-
-
-
-
-    // Get attachments
-    /*attachs.clear();
-    if(cirs.size() > 0)
-    {
-      c.detectAttachedCircles(cir_obs, attachs);  
-    }*/
-    /*for(int i=0;i<attachs.size();i++)
-    {
-      ////////ROS_INFO("Attachment %i:", i);
-      for(int j=0;j<attachs[i].cirs.size();j++)
-      {
-        ////////ROS_INFO("%i", attachs[i].cirs[j]);
-      }
-    }*/
-
-    /*
-     * Handle attachments
-     */
-    /*for(int i=0;i<attachs.size();i++)
-    {
-      //////////ROS_INFO("Attachment %i", i);
-      // Get max speed among attached obstacles
-      int i_max_speed=0;
-      float speed_average = 0;
-      for(int j=0;j<attachs[i].cirs.size();j++)
-      {
-        int i_cir = attachs[i].cirs[j];
-        speed_average += cir_obs[i_cir]->vel.v;
-      }
-      speed_average /= attachs[i].cirs.size();
-
-      double theta = cir_obs[i_max_speed]->prevTheta[cir_obs[i_max_speed]->prevTheta.size()-1];
-      //////////ROS_INFO("attachs.size(): %i i: %i", (int)attachs.size(), i);
-
-      // Based on max speed, set all circles speeds and thetas in attachment
-      for(int j=0;j<attachs[i].cirs.size();j++)
-      {
-        //////////ROS_INFO("j: %i attachs[%i].cirs.size(): %i", j, i, (int)attachs[i].cirs.size());
-        int i_cir   = attachs[i].cirs[j];
-        int i_theta = cir_obs[i_cir]->prevTheta.size()-1;
-        //////////ROS_INFO("i_cir: %i i_theta: %i cir_obs.size(): %i velocities.size(): %i", i_cir, i_theta, (int)cir_obs.size(), (int)velocities.size());
-        cir_obs[ i_cir ]->vel.v = speed_average;
-        //cir_obs[ i_cir ]->theta = theta;
-
-        if(cir_obs[i_cir]->prevTheta.size() > 0)
-        {
-          cir_obs[ i_cir ]->prevTheta[i_theta] = theta;
-        }
-        else
-        {
-          cir_obs[ i_cir ]->prevTheta.push_back(theta);
-        }
-        
-        velocities[ i_cir ].v = speed_average;
-      } // end inner for
-    } // end outer for*/
-
-    
-    /*
-     * Set previous circles
-     */
-    for(int i=0;i<cir_obs.size();i++)
-    {
-      cir_obs[i]->prevCirs.push_back(cir_obs[i]->cirGroup.fitCir);
-    }
-
-    // Set prev_cirs variable for data association
-    prev_valid_cirs = circles_current;
-   
-
-
-    /*
-     *  After finding velocities, populate Obstacle list
-     */  
-    populateObstacleList(velocities);
-
-
-
-    // Record duration data
-    duration<double> time_span = duration_cast<microseconds>(high_resolution_clock::now()-tStart);
-    durs.push_back( time_span.count() );
-    
-    if(use_static_map == true && gotPersistent == false)
-    {
-      gotPersistent = true;
-    }
-
+    //////ROS_INFO("cirGroups[%i].fitCir.size: %f", i, cirGroups[i].fitCir.radius);
+    //////ROS_INFO("cirGroups[%i].packedCirs.size(): %i", i, (int)cirGroups[i].packedCirs.size());
   }
 
 
-  //ROS_INFO("Duration: %f", time_span.count());
+
+
+  /*
+   ********************************************
+   * Done finding circles on latest costmap
+   ********************************************
+   */
+
+  /*
+   * Convert centers and radii to the global frame
+   */ 
+  convertGroups();
+  for(int i=0;i<cirGroups.size();i++)
+  {
+    ////ROS_INFO("cirGroups[%i].fitCir.size: %f", i, cirGroups[i].fitCir.radius);
+  }
+
+
+
+   /*
+    * Check if obstacles are in viewing angle
+    */
+  if(remove_outside_fov)
+  {
+    int i=0;
+    while(i<cirGroups.size())
+    {
+      if(!checkViewingObstacle(cirGroups[i].fitCir))
+      {
+        cirGroups.erase(cirGroups.begin()+i, cirGroups.begin()+i+1);
+        i--;
+      }
+
+      i++;
+    }
+  }
+  ////////ROS_INFO("After checking viewing angle, cirGroups.size(): %i", (int)cirGroups.size());*/
+ 
+
+  /*
+   * Data association
+   * Do the data associate before kf updates so that 
+   * 1) cir_obs.cir is set before doing update
+   * 2) the measurement for each cir_ob is correct before doing update
+   */
+  std::vector<CircleMatch> cm = dataAssociation(cirGroups);
+  //////ROS_INFO("Done checking data association");
+
+
+  
+  /*
+   * Call the Kalman filter
+   */
+   std::vector<CircleGroup> circles_current = updateKalmanFilters(cirGroups, cm);
+   //////ROS_INFO("After updateKalmanFilters");
+
+  
+
+   
+  /*
+   * Circle positions are finalized at this point
+   */
+
+
+
+
+   /*
+    * Predict orientations
+    */
+   computeOrientations();
+   //////ROS_INFO("After computeOrientations");
+  
+  
+  /*
+   * Predict velocities
+   */
+   std::vector<Velocity> velocities;
+   computeVelocities(cm, d_elapsed, velocities);
+   prev_velocities.push_back(velocities);
+   //////ROS_INFO("After computeVelocities");
+
+
+
+
+  // Get attachments
+  /*attachs.clear();
+  if(cirs.size() > 0)
+  {
+    c.detectAttachedCircles(cir_obs, attachs);  
+  }*/
+  /*for(int i=0;i<attachs.size();i++)
+  {
+    ////////ROS_INFO("Attachment %i:", i);
+    for(int j=0;j<attachs[i].cirs.size();j++)
+    {
+      ////////ROS_INFO("%i", attachs[i].cirs[j]);
+    }
+  }*/
+
+  /*
+   * Handle attachments
+   */
+  /*for(int i=0;i<attachs.size();i++)
+  {
+    //////////ROS_INFO("Attachment %i", i);
+    // Get max speed among attached obstacles
+    int i_max_speed=0;
+    float speed_average = 0;
+    for(int j=0;j<attachs[i].cirs.size();j++)
+    {
+      int i_cir = attachs[i].cirs[j];
+      speed_average += cir_obs[i_cir]->vel.v;
+    }
+    speed_average /= attachs[i].cirs.size();
+
+    double theta = cir_obs[i_max_speed]->prevTheta[cir_obs[i_max_speed]->prevTheta.size()-1];
+    //////////ROS_INFO("attachs.size(): %i i: %i", (int)attachs.size(), i);
+
+    // Based on max speed, set all circles speeds and thetas in attachment
+    for(int j=0;j<attachs[i].cirs.size();j++)
+    {
+      //////////ROS_INFO("j: %i attachs[%i].cirs.size(): %i", j, i, (int)attachs[i].cirs.size());
+      int i_cir   = attachs[i].cirs[j];
+      int i_theta = cir_obs[i_cir]->prevTheta.size()-1;
+      //////////ROS_INFO("i_cir: %i i_theta: %i cir_obs.size(): %i velocities.size(): %i", i_cir, i_theta, (int)cir_obs.size(), (int)velocities.size());
+      cir_obs[ i_cir ]->vel.v = speed_average;
+      //cir_obs[ i_cir ]->theta = theta;
+
+      if(cir_obs[i_cir]->prevTheta.size() > 0)
+      {
+        cir_obs[ i_cir ]->prevTheta[i_theta] = theta;
+      }
+      else
+      {
+        cir_obs[ i_cir ]->prevTheta.push_back(theta);
+      }
+      
+      velocities[ i_cir ].v = speed_average;
+    } // end inner for
+  } // end outer for*/
+
+  
+  /*
+   * Set previous circles
+   */
+  for(int i=0;i<cir_obs.size();i++)
+  {
+    cir_obs[i]->prevCirs.push_back(cir_obs[i]->cirGroup.fitCir);
+  }
+
+  // Set prev_cirs variable for data association
+  prev_valid_cirs = circles_current;
+ 
+
+
+  /*
+   *  After finding velocities, populate Obstacle list
+   */  
+  populateObstacleList(velocities);
+
+
+
+  // Record duration data
+  duration<double> time_span = duration_cast<microseconds>(high_resolution_clock::now()-tStart);
+  durs.push_back( time_span.count() );
+  
+  if(persistGrid == true && gotPersistent == false)
+  {
+    gotPersistent = true;
+  }
+
+
+  ////ROS_INFO("Duration: %f", time_span.count());
   num_costmaps++;
-  /*ROS_INFO("**************************************************");
-  ROS_INFO("Exiting costmapCb");
-  ROS_INFO("**************************************************");*/
+  //////////ROS_INFO("**************************************************");
+  //////////ROS_INFO("Exiting costmapCb");
+  //////////ROS_INFO("**************************************************");
 }
 
 void writeData()
@@ -2978,7 +2610,7 @@ int main(int argc, char** argv)
 
   if(use_odom_topics)
   {
-    ROS_INFO("In use_odom_topics");
+    //ROS_INFO("In use_odom_topics");
 
     // Get the rosparam value
     if(handle.hasParam("/ramp/obstacle_odoms"))
@@ -2988,10 +2620,6 @@ int main(int argc, char** argv)
       {
         topic_index_map[ob_odoms.at(i)] = i;
       }
-    }
-    else
-    {
-      //////////ROS_ERROR("ramp_sensing: Could not find obstacle_topics rosparam!");
     }
 
     // Load obstacle transforms to global
@@ -3004,7 +2632,7 @@ int main(int argc, char** argv)
       Obstacle temp;
       temp.T_w_init_ = ob_tfs[i];
       obs.push_back(temp);
-      dynamicObsList.obstacles.push_back(temp.msg_);
+      list.obstacles.push_back(temp.msg_);
 
       ros::Subscriber sub_ob = handle.subscribe<nav_msgs::Odometry>(ob_odoms.at(i), 1, boost::bind(updateOtherRobotCb, _1, ob_odoms.at(i)));
       subs_obs.push_back(sub_ob);
@@ -3037,40 +2665,25 @@ int main(int argc, char** argv)
     }*/
 
     // Before instantiating Subscribers, check if we are using a persistent grid
-    if(use_static_map)
+    if(persistGrid)
     {
       handle.setParam("/ramp/sensing_ready", false);
-      ROS_INFO("Rosparam staticMap is true so this node will wait until a nav_msgs/OccupancyGrid is published on '/map'");
-      ros::Subscriber sub_staticMap = handle.subscribe<nav_msgs::OccupancyGrid>("/map", 1, &staticMapCb);
+      //ROS_INFO("Rosparam persistGrid is true so this node will wait until a nav_msgs/OccupancyGrid is published on '/persistent_grid'");
+      ros::Subscriber sub_persistentGrid = handle.subscribe<nav_msgs::OccupancyGrid>("/map", 1, &persistGridCb);
 
       ros::Rate r(100);
       while(ros::ok() && gotPersistent == false) {ros::spinOnce(); r.sleep();}
       
-      ROS_INFO("Got grid!");
+      //ROS_INFO("Got grid!");
     }
   }
   
-  ROS_INFO("Sensing module setting /ramp/sensing_ready to true");
   handle.setParam("/ramp/sensing_ready", true);
-  
-  ros::Subscriber sub_hilbertMap = handle.subscribe<nav_msgs::OccupancyGrid>("/hilbert_map_grid", 1, &hilbertMapCb);
-
-  if(use_hilbert_map)
-  {
-    ROS_INFO("Sensing module is waiting for planner to start...");
-    ros::Rate rWaiting(100);
-    while(planner_started == false)
-    {
-      handle.getParam("/ramp/preplanning_cycles_done", planner_started);
-      ros::spinOnce();
-      rWaiting.sleep();
-    }
-    ROS_INFO("Sensing module received param that planner is ready! planner_started: %s", planner_started ? "True" : "False");
-  }
 
   // Subscribers
   ros::Subscriber sub_costmap = handle.subscribe<nav_msgs::OccupancyGrid>("/costmap_node/costmap/costmap", 1, &costmapCb);
   ros::Subscriber sub_robot_update = handle.subscribe<ramp_msgs::MotionState>("/updateAfterTf", 1, &robotUpdateCb);
+  //ros::Subscriber sub_costmap = handle.subscribe<nav_msgs::OccupancyGrid>("/hilbert_map_grid", 1, &costmapCb);
   //ros::Subscriber sub_odom = handle.subscribe<nav_msgs::Odometry>("/odom", 1, &odomCb);
   //ros::Subscriber sub_costmap = handle.subscribe<nav_msgs::OccupancyGrid>("/consolidated_costmap", 1, &costmapCb);
 
@@ -3080,7 +2693,6 @@ int main(int argc, char** argv)
   pub_cons_costmap = handle.advertise<nav_msgs::OccupancyGrid>("accumulated_costmap", 2);
   pub_half_costmap = handle.advertise<nav_msgs::OccupancyGrid>("half_costmap", 2);
   pub_global_costmap = handle.advertise<nav_msgs::OccupancyGrid>("global_costmap", 2);
-  pub_combinedHmap = handle.advertise<nav_msgs::OccupancyGrid>("combined_map", 1);
 
   // Timers
   ros::Timer timer = handle.createTimer(ros::Duration(1.f / rate), publishList);
@@ -3090,8 +2702,8 @@ int main(int argc, char** argv)
   // Set function to run at shutdown
   signal(SIGINT, reportPredictedVelocity);
  
-  //ros::Duration dd(0.5);
-  //dd.sleep();
+  ros::Duration dd(0.5);
+  dd.sleep();
 
   // Set initial robot position
   // start vector needs to be set (usually it is obtained from rosparam)
@@ -3101,14 +2713,12 @@ int main(int argc, char** argv)
   ms.positions.push_back(start[2]);
   setRobotPos(ms);
 
-  printf("\nSensing node Spinning\n");
+  printf("\nSpinning\n");
 
-  /*ros::AsyncSpinner spinner(8);
+  ros::AsyncSpinner spinner(8);
   printf("\nWaiting for requests...\n");
   spinner.start();
-  ros::waitForShutdown();*/
-
-  ros::spin();
+  ros::waitForShutdown();
 
   printf("\nExiting normally\n");
   return 0;

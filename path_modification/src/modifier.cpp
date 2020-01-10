@@ -3,18 +3,6 @@
 Modifier::Modifier(ramp_msgs::ModificationRequest::Request& req) : mod_req(req) {}
 
 
-Modifier::Modifier(ramp_msgs::ModificationRequest::Request& req, std::vector<ramp_msgs::Range> r) : mod_req(req), ranges_(r) 
-{
-  in_.ranges_ = r;
-  chg_.ranges_ = r;
-  repair_.ranges_ = r;
-
-  /*ROS_INFO("Ranges in Path Mod package Modifier");
-  for(int i=0;i<ranges_.size();i++)
-  {
-    ROS_INFO("Range %i min: %f max %f", i, ranges_[i].min, ranges_[i].max);
-  }*/
-}
 
 const std::vector<ramp_msgs::Path> Modifier::perform() 
 {
@@ -65,7 +53,7 @@ const std::vector<ramp_msgs::Path> Modifier::perform()
     result = cross_.perform();
   }
 
-  else if(mod_req.op == "repair")
+  /*else if(mod_req.op == "move")
   {
     repair_.path_ = mod_req.paths[0];
     repair_.dir_  = mod_req.repair_dir;
@@ -73,18 +61,18 @@ const std::vector<ramp_msgs::Path> Modifier::perform()
     repair_.r_    = mod_req.repair_ob_r;
 
     result.push_back(repair_.perform());
-  }
+  }*/
 
-  //ROS_INFO("Modifier returning: %s", u.toString(result.at(0)).c_str());
+  /*ROS_INFO("Modifier returning: %s", u.toString(result.at(0)).c_str());
   
-  /*for(int i=0;i<result.size();i++)
+  for(int i=0;i<result.size();i++)
   {
     for(int j=0;j<result[i].points.size();j++)
     {
-      if(result[i].points[j].motionState.positions[0] > ranges_[0].max ||
-          result[i].points[j].motionState.positions[1] > ranges_[1].max ||
-          result[i].points[j].motionState.positions[0] < ranges_[0].min ||
-          result[i].points[j].motionState.positions[1] < ranges_[0].min)
+      if(result[i].points[j].motionState.positions[0] > 3.5 ||
+          result[i].points[j].motionState.positions[1] > 3.5 ||
+          result[i].points[j].motionState.positions[0] < 0 ||
+          result[i].points[j].motionState.positions[1] < 0)
       {
         ROS_INFO("Result Path has an out-of-bounds motion state");
       }

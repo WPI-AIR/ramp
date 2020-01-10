@@ -57,7 +57,7 @@ const std::string Modifier::getOperator() const
 
     // Move/repair
     case 5:
-      result = "repair";
+      result = "move";
       break;
   }
  
@@ -72,7 +72,6 @@ const std::vector<int> Modifier::getTargets(const std::string& op, const Populat
   ////////ROS_INFO("pop.paths_.size(): %i", (int)pop.paths_.size());
   ////////ROS_INFO("pop.trajec.size(): %i", (int)pop.trajectories_.size());
   ////////ROS_INFO("Pop: %s", pop.toString().c_str());
-
   //ROS_INFO("op: %s", op.c_str());
   std::vector<int> result;
 
@@ -119,11 +118,8 @@ void Modifier::buildModificationRequest(const Population& pop, bool imminent_col
   }
   else
   {
-    ROS_INFO("Modifier: Calling Repair because IC exists");
-    
-    //*****************************************
-    //Commented out for testing
-    result.request.op = "repair";
+    //ROS_INFO("Modifier: Calling Move because IC exists");
+    result.request.op = "move";
     targets.push_back(pop.calcBestIndex());  
   }
 

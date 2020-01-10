@@ -10,39 +10,22 @@ Planner             my_planner;
 int                 id;
 MotionState         start, goal;
 std::vector<Range>  ranges;
-double              radius;
 double              max_speed_linear;
 double              max_speed_angular;
 int                 population_size;
-int                 num_ppcs;
-bool                sensingBeforeCC;
+double              radius;
+int                 gensBeforeCC;
 bool                sub_populations;
 bool                modifications;
 bool                evaluations;
 bool                seedPopulation;
 bool                errorReduction;
-bool                only_sensing;
-bool                moving_robot;
-bool                shrink_ranges;
-bool                stop_after_ppcs;
-bool                show_full_traj;
-bool                try_ic_loop;
 double              t_cc_rate;
-double              t_sc_rate;
-double              T_weight, A_weight, D_weight;
+double              t_pc_rate;
+int                 num_obs;
 int                 pop_type;
 TrajectoryType      pt;
 std::vector<std::string> ob_topics;
-std::string         global_frame;
-std::string         update_topic;
-
-bool use_start_param;
-bool start_planner;
-bool use_hilbert_map;
-bool use_odom_topics;
-
-
-
 
 
 // Initializes a vector of Ranges that the Planner is initialized with
@@ -80,7 +63,7 @@ void initStartGoal(const std::vector<float> s, const std::vector<float> g)
 
 /** Loads all of the ros parameters from .yaml 
  *  Calls initDOF, initStartGoal */
-void loadParameters(const ros::NodeHandle handle)
+void loadParameters(const ros::NodeHandle handle) 
 {
   std::cout<<"\nLoading parameters\n";
   std::cout<<"\nHandle NS: "<<handle.getNamespace();
@@ -97,7 +80,7 @@ void loadParameters(const ros::NodeHandle handle)
   }
   else 
   {
-    //ROS_ERROR("Did not find parameter robot_info/id");
+    ROS_ERROR("Did not find parameter robot_info/id");
   }
 
   // Get the radius of the robot
@@ -107,48 +90,8 @@ void loadParameters(const ros::NodeHandle handle)
   }
   else 
   {
-    //ROS_ERROR("Did not find parameter robot_info/radius");
+    ROS_ERROR("Did not find parameter robot_info/radius");
   }
-
-  if(handle.hasParam("ramp/global_frame"))
-  {
-    handle.getParam("ramp/global_frame", global_frame);
-    //ROS_INFO("global_frame: %s", global_frame.c_str());
-  }
-  else
-  {
-    //ROS_ERROR("Could not find rosparam ramp/global_frame");
-  }
-
-  if(handle.hasParam("ramp/update_topic"))
-  {
-    handle.getParam("ramp/update_topic", update_topic);
-    //ROS_INFO("update_topic: %s", update_topic.c_str());
-  }
-  else
-  {
-    //ROS_ERROR("Could not find rosparam ramp/update_topic");
-  }
-  
-  if(handle.hasParam("ramp/shrink_ranges"))
-  {
-    handle.getParam("ramp/shrink_ranges", shrink_ranges);
-    std::cout<<"\nshrink_ranges: "<<shrink_ranges;
-  }
-
-  if(handle.hasParam("ramp/use_start_param"))
-  {
-    handle.getParam("ramp/use_start_param", use_start_param);
-    std::cout<<"\nuse_start_param: "<<use_start_param;
-  }
-
-
-  if(handle.hasParam("ramp/use_hilbert_map"))
-  {
-    handle.getParam("ramp/use_hilbert_map", use_hilbert_map);
-    std::cout<<"\nuse_hilbert_map: "<<use_hilbert_map;
-  }
-
 
   // Get the dofs
   if(handle.hasParam("robot_info/DOF_min") && 
@@ -163,65 +106,7 @@ void loadParameters(const ros::NodeHandle handle)
   else 
   {
     ROS_ERROR("Did not find parameters robot_info/DOF_min, robot_info/DOF_max");
-    exit(1);
   }
-
-  if(handle.hasParam("robot_info/max_speed_linear"))
-  {
-    handle.getParam("robot_info/max_speed_linear", max_speed_linear);
-  }
-  else
-  {
-    ROS_ERROR("Did not find robot_info/max_speed_linear rosparam");
-    exit(1);
-  }
-  
-  // Get the evaluation weights
-  handle.getParam("/ramp/eval_weight_T", T_weight);
-  handle.getParam("/ramp/eval_weight_D", D_weight);
-  handle.getParam("/ramp/eval_weight_A", A_weight);
-
-  if(handle.hasParam("robot_info/max_speed_angular"))
-  {
-    handle.getParam("robot_info/max_speed_angular", max_speed_angular);
-  }
-  else
-  {
-    ROS_ERROR("Did not find robot_info/max_speed_angular rosparam");
-    exit(1);
-  }
-  /*
-   * Check for all costmap parameters!
-   */
-  /*if( handle.hasParam("costmap_node/costmap/width")     &&
-      handle.hasParam("costmap_node/costmap/height")    &&
-      handle.hasParam("costmap_node/costmap/origin_x")  &&
-      handle.hasParam("costmap_node/costmap/origin_y") )
-  {
-    handle.getParam("costmap_node/costmap/width", costmap_width);
-    handle.getParam("costmap_node/costmap/height", costmap_height);
-    handle.getParam("costmap_node/costmap/origin_x", costmap_origin_x);
-    handle.getParam("costmap_node/costmap/origin_y", costmap_origin_y);
-
-    //ROS_INFO("Got costmap parameters. w: %f h: %f x: %f y: %f", costmap_width, costmap_height, costmap_origin_x, costmap_origin_y);
-
-    float x_max = costmap_width + costmap_origin_x;
-    float x_min = costmap_origin_x;
-    float y_max = costmap_height + costmap_origin_y;
-    float y_min = costmap_origin_y;
-    //ROS_INFO("x_max: %f x_min: %f y_max: %f y_min: %f", x_max, x_min, y_max, y_min);
-    
-    std::vector<double> dof_min, dof_max;
-    dof_min.push_back(x_min);
-    dof_min.push_back(y_min);
-    dof_max.push_back(x_max);
-    dof_max.push_back(y_max);
-
-    dof_min.push_back(-PI);
-    dof_max.push_back(PI);
-
-    initDOF(dof_min, dof_max); 
-  }*/
 
 
   // Get the start and goal vectors
@@ -237,9 +122,25 @@ void loadParameters(const ros::NodeHandle handle)
   else 
   {
     ROS_ERROR("Did not find parameters robot_info/start, robot_info/goal");
-    exit(1);
   }
 
+  if(handle.hasParam("robot_info/max_speed_linear"))
+  {
+    handle.getParam("robot_info/max_speed_linear", max_speed_linear);
+  }
+  else
+  {
+    ROS_ERROR("Did not find robot_info/max_speed_linear rosparam");
+  }
+
+  if(handle.hasParam("robot_info/max_speed_angular"))
+  {
+    handle.getParam("robot_info/max_speed_angular", max_speed_angular);
+  }
+  else
+  {
+    ROS_ERROR("Did not find robot_info/max_speed_angular rosparam");
+  }
 
 
   if(handle.hasParam("ramp/population_size")) 
@@ -273,52 +174,22 @@ void loadParameters(const ros::NodeHandle handle)
     std::cout<<"\nseed_population: "<<seedPopulation;
   }
   
-  if(handle.hasParam("ramp/only_sensing"))
+  if(handle.hasParam("ramp/gens_before_control_cycle")) 
   {
-    handle.getParam("ramp/only_sensing", only_sensing);
-    std::cout<<"\nonly_sensing: "<<only_sensing;
-  }
-
-  if(handle.hasParam("ramp/moving_robot"))
-  {
-    handle.getParam("ramp/moving_robot", moving_robot);
-    std::cout<<"\nmoving_robot: "<<moving_robot;
-  }
-
-  if(handle.hasParam("ramp/preplanning_cycles"))
-  {
-    handle.getParam("ramp/preplanning_cycles", num_ppcs);
-    std::cout<<"\npreplanning_cycles: "<<num_ppcs;
-  }
-  
-  if(handle.hasParam("ramp/stop_after_ppcs"))
-  {
-    handle.getParam("ramp/stop_after_ppcs", stop_after_ppcs);
-    std::cout<<"\nstop_after_ppcs: "<<stop_after_ppcs ? "True" : "False";
-  }
-
-  if(handle.hasParam("ramp/sensing_before_control_cycle"))
-  {
-    handle.getParam("ramp/sensing_before_control_cycle", sensingBeforeCC);
-    ROS_INFO("sensingBeforeCC: %s", sensingBeforeCC ? "True" : "False");
+    handle.getParam("ramp/gens_before_control_cycle", gensBeforeCC);
+    std::cout<<"\ngens_before_control_cycle: "<<gensBeforeCC;
   }
   
   if(handle.hasParam("ramp/fixed_control_cycle_rate")) 
   {
     handle.getParam("ramp/fixed_control_cycle_rate", t_cc_rate);
-    //ROS_INFO("t_cc_rate: %f", t_cc_rate);
-  }
-  
-  if(handle.hasParam("ramp/sensing_cycle_rate")) 
-  {
-    handle.getParam("ramp/sensing_cycle_rate", t_sc_rate);
-    //ROS_INFO("t_sc_rate: %f", t_sc_rate);
+    ROS_INFO("t_cc_rate: %f", t_cc_rate);
   }
   
   if(handle.hasParam("ramp/pop_traj_type")) 
   {
     handle.getParam("ramp/pop_traj_type", pop_type);
-    //ROS_INFO("pop_type: %s", pop_type ? "Partial Bezier" : "All Straight");
+    ROS_INFO("pop_type: %s", pop_type ? "Partial Bezier" : "All Straight");
     switch (pop_type) 
     {
       case 0:
@@ -329,27 +200,29 @@ void loadParameters(const ros::NodeHandle handle)
         break;
     }
   }
-
-  if(handle.hasParam("ramp/show_full_traj"))
-  {
-    handle.getParam("ramp/show_full_traj", show_full_traj);
-    ROS_INFO("show_full_traj: %s", show_full_traj ? "True" : "False");
-  }
   
-
-
   if(handle.hasParam("ramp/error_reduction")) 
   {
     handle.getParam("ramp/error_reduction", errorReduction);
-    //ROS_INFO("errorReduction: %s", errorReduction ? "True" : "False");
+    ROS_INFO("errorReduction: %s", errorReduction ? "True" : "False");
   }
 
-
-  if(handle.hasParam("ramp/try_ic_loop")) 
+  if(handle.hasParam("ramp/num_of_obstacles"))
   {
-    handle.getParam("ramp/try_ic_loop", try_ic_loop);
+    handle.getParam("ramp/num_of_obstacles", num_obs);
+    ROS_INFO("num_of_obstacles: %i", num_obs);
   }
 
+
+  if(handle.hasParam("ramp/obstacle_topics"))
+  {
+    handle.getParam("ramp/obstacle_topics", ob_topics);
+    ROS_INFO("ob_topics.size(): %i", (int)ob_topics.size());
+    for(int i=0;i<ob_topics.size();i++)
+    {
+      ROS_INFO("ob_topics[%i]: %s", i, ob_topics.at(i).c_str());
+    }
+  }
 
 
 
@@ -364,6 +237,7 @@ void loadParameters(const ros::NodeHandle handle)
     }
   std::cout<<"\n---------------------------------------";
 }
+
 
 
 
@@ -562,31 +436,11 @@ void pubObTrj(const ros::TimerEvent e, const TestCase tc)
 }
 
 
-bool StageUpdateFinished()
-{
-  return (my_planner.latestUpdate_.msg_.positions[0] < 0.02 &&
-          my_planner.latestUpdate_.msg_.positions[1] < 0.02);// &&
-          //my_planner.latestUpdate_.msg_.positions[2] < 0.01);
-}
-
-
-
-
-void shutdown(int sigint)
-{
-  ros::param::set("ramp/ready_tc", false);
-}
-
-
 int main(int argc, char** argv) {
   srand( time(0));
 
   ros::init(argc, argv, "ramp_planner");
   ros::NodeHandle handle;
-
-  signal(SIGINT, shutdown);
-  ros::param::set("ramp/ready_tc", false);
-
   
   // Load ros parameters and obstacle transforms
   loadParameters(handle);
@@ -598,13 +452,16 @@ int main(int argc, char** argv) {
 
   ros::Rate r(100);
   
+  ros::Subscriber sub_sc_     = handle.subscribe("obstacles", 1, &Planner::sensingCycleCallback,  &my_planner);
+  ros::Subscriber sub_update_ = handle.subscribe("update",    1, &Planner::updateCbControlNode,        &my_planner);
+
   ros::ServiceClient client_reset = handle.serviceClient<std_srvs::Empty>("reset_positions");
   std_srvs::Empty reset_srv;
 
 
   ros::Timer ob_trj_timer;
   
-  int num_tests = 35;
+  int num_tests = 5;
   int num_successful_tests = 0;
   std::vector<int> num_generations;
   std::vector<TestCase> test_cases;
@@ -638,13 +495,11 @@ int main(int argc, char** argv) {
     
     // Test case done, stop publishing obs
     my_planner.h_parameters_.setTestCase(false);
-    //ROS_INFO("After setting SetTestCase(false)");
 
     // Wait for test case to be generated
     bool tc_generated = false;
     while(!tc_generated)
     {
-      ROS_INFO("In while, tc_generated: %s", tc_generated ? "True" : "False");
       handle.getParam("/ramp/tc_generated", tc_generated);
       r.sleep();
       ros::spinOnce();
@@ -659,8 +514,9 @@ int main(int argc, char** argv) {
      * Set the obstacle transformations to be the initial position
      */
 
-    /** Initialize the Planner */
-    my_planner.init(id, handle, start, goal, ranges, max_speed_linear, max_speed_angular, population_size, radius, sub_populations, "global_frame", "odom", pt, num_ppcs, stop_after_ppcs, sensingBeforeCC, t_sc_rate, t_cc_rate, only_sensing, moving_robot, errorReduction, try_ic_loop, T_weight, A_weight, D_weight, show_full_traj);
+    /** Initialize the Planner */ 
+    my_planner.init(id, handle, start, goal, ranges, max_speed_linear, max_speed_angular, population_size, radius, sub_populations, "global_frame", "update_topic", pt, gensBeforeCC, 
+        t_pc_rate, t_cc_rate, errorReduction);
     my_planner.modifications_   = modifications;
     my_planner.evaluations_     = evaluations;
     my_planner.seedPopulation_  = seedPopulation;
@@ -668,10 +524,6 @@ int main(int argc, char** argv) {
     ROS_INFO("Planner initialized");
     ROS_INFO("Start: %s", my_planner.start_.toString().c_str());
     ROS_INFO("Goal: %s", my_planner.goal_.toString().c_str());
-  
-    ros::Subscriber sub_sc_     = handle.subscribe("obstacles", 1, &Planner::sensingCycleCallback,  &my_planner);
-    ros::Subscriber sub_update_ = handle.subscribe("update",    1, &Planner::updateCbControlNode,   &my_planner);
-
 
     /*
      * Prep test
@@ -680,88 +532,26 @@ int main(int argc, char** argv) {
     auto p_next_cc = my_planner.prepareForTestCase();
 
     ROS_INFO("Done with prepareForTestCase");
-    ROS_INFO("Setting tc_ready param to true");
 
-    // Toggle flag saying we are ready to start a new test case
+
+    // Start publishing obstacle info
     my_planner.h_parameters_.setTestCase(true); 
-
-    // Wait for static obs
-    ROS_INFO("Waiting for param /ramp/static-obs to be true");
-    bool stat_obs = false;
-    while(stat_obs == false)
-    {
-      handle.getParam("/ramp/static_obs", stat_obs);
-      r.sleep();
-      ros::spinOnce();
-    }
-
-    ROS_INFO("Run:Running planning cycles with static obs");
-    //ROS_INFO("latestUpdate_: %s diff_: %s", my_planner.latestUpdate_.toString().c_str(), my_planner.diff_.toString().c_str());
-    // Run planning cycles while stat obs is true
-    while(stat_obs)
-    {
-      my_planner.planningCycleCallback(); 
-      my_planner.sendPopulation();
-      handle.getParam("/ramp/static_obs", stat_obs);
-      r.sleep();
-      ros::spinOnce();
-    }
-    
-    ROS_INFO("Run:Done doing planning cycles with static obs");
-    
-    // Wait for dynamic obs
-    ROS_INFO("Run:Waiting for param /ramp/dy_obs to be true");
-    bool dy_obs = false;
-    while(dy_obs == false)
-    {
-      handle.getParam("/ramp/dy_obs", dy_obs);
-      r.sleep();
-      ros::spinOnce();
-    }
-
-    ROS_INFO("Run:dy_obs is true, running full planner");
 
     /*
      * Run planner
      */
     my_planner.goTest(d_test_case_thresh.toSec());
-
-    ROS_INFO("Run:Finished test %i", i);
-    ROS_INFO("Run:Setting tc_ready to false");
     
     
     // Test case done, stop publishing obs
     my_planner.h_parameters_.setTestCase(false);
-    my_planner.h_parameters_.setTestCase(false);
-
-    // Sleep to let robot finish trajec
-    ros::Duration d(1.4);
-    // During this sleep, updates are still coming from control node
-    d.sleep();
-    my_planner.resetForSLTest();
-
-    // Can updates register here?
 
     // Reset Stage positions
     client_reset.call(reset_srv);
-    client_reset.call(reset_srv);
-
-    ROS_INFO("Waiting for stage reset to be done");
-    // Wait for reset to go through
-    // We will know because latestUpdate will be back to 0s
-    while(StageUpdateFinished() == false)
-    {
-      r.sleep();
-      ros::spinOnce();
-    }
-    my_planner.imminent_collision_ = false;
-
-    ROS_INFO("After resetting Stage positions");
   }
-  ROS_INFO("Outside of for loop");
 
 
-  printf("\n\nExiting normally\n");
+  std::cout<<"\n\nExiting Normally\n";
   ros::shutdown();
   return 0;
 }

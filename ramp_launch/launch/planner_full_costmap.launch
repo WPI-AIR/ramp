@@ -14,7 +14,7 @@
 <node name="costmap_node" pkg="costmap_2d" type="costmap_2d_node" output="log" >
   <rosparam file="$(find ramp_launch)/launch/costmap_param/my_rolling_costmap.yaml" command="load" />
 </node>
-<include file="$(find laser_filters)/launch/range_filter.launch" />
+<!-- <include file="$(find laser_filters)/launch/range_filter.launch" /> -->
 
 
 <!-- Reset odometry -->
@@ -38,6 +38,12 @@
 
 <!-- map->odom transform -->
 <node name="pub_map_odom" pkg="ramp_planner" type="pub_map_odom" output="screen" />
+
+<!-- <node name="ramp_control" pkg="ramp_control" type="ramp_control" output="screen" >
+  <remap from="odometry" to="odom" />
+  <remap from="cmd_vel" to="mobile_base/commands/velocity" />
+  <param name="simulation" value="true" />
+</node> -->
 
 
 </launch>

@@ -6,7 +6,6 @@
 #include "tf/transform_datatypes.h"
 #include "ramp_msgs/TrajectoryRequest.h"
 #include "ramp_msgs/Obstacle.h"
-#include "ramp_msgs/Range.h"
 #include <chrono>
 
 
@@ -24,7 +23,6 @@ class CollisionDetection
       bool  collision_;
       float t_firstCollision_;
       int   i_obstacle_;
-      int p_max_;
     };  // End QueryResult
 
     /* Struct to hold information when querying against a packed obstacle */
@@ -49,10 +47,6 @@ class CollisionDetection
     
     //OLDvoid                        performNum(const ramp_msgs::RampTrajectory& trajectory, const std::vector<ramp_msgs::RampTrajectory>& obstacle_trjs, const double& robot_radius, const std::vector<double> obstacle_radii, QueryResult& result); 
 
-    
-    void performUsingCombinedMap(const ramp_msgs::RampTrajectory& trajectory, const std::vector<ramp_msgs::RampTrajectory>& obstacle_trjs, const double& robot_radius, const std::vector<ramp_msgs::CircleGroup> ob_cir_groups, const nav_msgs::OccupancyGrid& combinedGrid, const nav_msgs::OccupancyGrid& hmap, QueryResult& result);
-    double queryUsingCombinedMap(const std::vector<trajectory_msgs::JointTrajectoryPoint>& segment, const std::vector<trajectory_msgs::JointTrajectoryPoint>& ob_trajectory, const double& traj_start, const double& robot_r, const ramp_msgs::CircleGroup& cirGroup, const nav_msgs::OccupancyGrid& combinedGrid, QueryResult& result);
-    double queryUsingCombinedMapNoObs(const std::vector<trajectory_msgs::JointTrajectoryPoint>& segment, const double& traj_start, const double& robot_r, const nav_msgs::OccupancyGrid& combinedGrid, QueryResult& result);
 
     void performHmap(const ramp_msgs::RampTrajectory& trajectory, const std::vector<ramp_msgs::CircleGroup>& packed_obs, const double& robot_radius, const ramp_msgs::HilbertMap& hmap, QueryResultPacked& result);
     void queryHmap(const std::vector<trajectory_msgs::JointTrajectoryPoint>& segment, const ramp_msgs::CircleGroup& ob, const double& traj_start, const double& robot_r, const ramp_msgs::HilbertMap& hmap, QueryResultPacked& result) const;
@@ -63,9 +57,11 @@ class CollisionDetection
     /**
      * Brute force method - check each point until collision found or no collision
      */
-    void           queryGetCollPoints(const std::vector<trajectory_msgs::JointTrajectoryPoint>& segment, const std::vector<trajectory_msgs::JointTrajectoryPoint>& ob_trajectory, std::vector< std::vector<double> >& points_of_collision) const;
+    void           query(const ramp_msgs::RampTrajectory& trajectory, const ramp_msgs::RampTrajectory& ob_trajectory, QueryResult& result) const;
+    void           query(const std::vector<trajectory_msgs::JointTrajectoryPoint>& segment, const std::vector<trajectory_msgs::JointTrajectoryPoint>& ob_trajectory, std::vector< std::vector<double> >& points_of_collision) const;
     double         query(const std::vector<trajectory_msgs::JointTrajectoryPoint>& segment, const std::vector<trajectory_msgs::JointTrajectoryPoint>& ob_trajectory, const double& traj_start, const double& robot_r, const ramp_msgs::CircleGroup& cirGroup, QueryResult& result) const;
 
+    //OLDvoid          queryPackedOb(const ramp_msgs::RampTrajectory& traj, const ramp_msgs::PackedObstacle ob, const double& traj_start, const double& robot_r, QueryResult& result) const;
 
 
 
@@ -151,9 +147,6 @@ class CollisionDetection
 
 
     double min_dist_;
-    double p_max_;
-
-    std::vector<ramp_msgs::Range> ranges_;
 
   private:
 

@@ -127,13 +127,11 @@ const std::vector<ramp_msgs::MotionState> Line::generatePoints() {
 
 
 void Line::init(const ramp_msgs::MotionState start, 
-                const ramp_msgs::MotionState goal,
-                const double max_acc) 
+                const ramp_msgs::MotionState goal) 
 {
   //std::cout<<"\nIn init, start: "<<utility_.toString(start);
   start_  = start;
   goal_   = goal;
-  max_acc_ = max_acc;
   
   timeCutoff_ = ros::Duration(35);
 
@@ -143,8 +141,7 @@ void Line::init(const ramp_msgs::MotionState start,
   setReflexxesSelection();
 }
 
-void Line::initReflexxes() 
-{
+void Line::initReflexxes() {
   // Set DOF
   reflexxesData_.NUMBER_OF_DOFS = 3;
 
@@ -172,8 +169,8 @@ void Line::initReflexxes()
   
 
   // Maximum acceleration
-  reflexxesData_.inputParameters->MaxAccelerationVector->VecData[0] = max_acc_;
-  reflexxesData_.inputParameters->MaxAccelerationVector->VecData[1] = max_acc_;
+  reflexxesData_.inputParameters->MaxAccelerationVector->VecData[0] = 0.66;
+  reflexxesData_.inputParameters->MaxAccelerationVector->VecData[1] = 0.66;
   reflexxesData_.inputParameters->MaxAccelerationVector->VecData[2] = PI/4;
   
 

@@ -12,8 +12,6 @@ class ParameterHandler {
     void setCCStarted(bool cc); 
   
     void setTestCase(bool ready_tc);
-    
-    void setPPCDone(bool ppc_done);
   private:
 };
 

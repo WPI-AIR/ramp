@@ -1,7 +1,6 @@
 #ifndef SWAP_H
 #define SWAP_H
 #include "ramp_msgs/Path.h"
-#include "ramp_msgs/Range.h"
 
 class Swap {
   public:
@@ -10,7 +9,6 @@ class Swap {
    
     const ramp_msgs::Path perform();
    
-    std::vector<ramp_msgs::Range> ranges_;
     ramp_msgs::Path path_; 
 };
 

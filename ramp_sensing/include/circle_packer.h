@@ -22,14 +22,14 @@ class CirclePacker
 
     void setNewGrid(nav_msgs::OccupancyGridConstPtr);
     void setNewGrid(nav_msgs::OccupancyGrid);
-
     void setStaticMap(nav_msgs::OccupancyGridConstPtr);
+    std::vector<CircleGroup>  getGroupsForStaticMap();
+    std::vector<Cell> getCellsInPolygonStaticMap(const Polygon& p, const std::vector<cv::Point> contours); 
 
+    void convertOGtoMat(nav_msgs::OccupancyGridConstPtr);
     void convertOGtoMat(nav_msgs::OccupancyGridConstPtr, cv::Mat& result);
 
     void CannyThreshold(int, void*);
-
-    void PrintSrc() const;
 
     Normal computeNormal(Edge);
 
@@ -66,24 +66,15 @@ class CirclePacker
     void deleteCellsInCir(const std::vector<Cell>&, const Circle, std::vector<Cell>&);
     Circle                    fitCirOverContours(const std::vector<cv::Point> contours);
     std::vector<Circle>       packCirsIntoPoly(const Polygon p, const double min_r);
-
-
-    CircleGroup               getGroupForContours(std::vector<cv::Point> contours, std::vector<CircleGroup>& largeObs, const double gridOriginX, const double gridOriginY, const double gridResolution, bool usingHMap=false);
-
-
-    std::vector<CircleGroup>  getGroups(std::vector<CircleGroup>& staticObs, const double gridOriginX, const double gridOriginY, const double gridResolution, bool usingHMap=false);
-    
-    std::vector<CircleGroup>  getGroups(std::vector<CircleGroup>& staticObs, bool usingHMap=false);
-    
-    std::vector<CircleGroup>  getGroupsForStaticMap();
-    std::vector<Cell> getCellsInPolygonStaticMap(const Polygon& p, const std::vector<cv::Point> contours); 
+    CircleGroup               getGroupForContours(std::vector<cv::Point> contours, std::vector<CircleGroup>& largeObs, bool usingHMap=false);
+    std::vector<CircleGroup>  getGroups(std::vector<CircleGroup>& largeObs, bool usingHMap=false);
     
     visualization_msgs::Marker polygonMarker_;
     std::vector<visualization_msgs::Marker> pMarkers_;
 
     std::vector<visualization_msgs::Marker> cMarkers_; 
-
     nav_msgs::OccupancyGrid staticMap_;
+
 
   private:
 
@@ -98,8 +89,9 @@ class CirclePacker
 
 
     Utility utility_;
+    cv::Mat srcStaticMap;
 
-    cv::Mat src, srcStaticMap;
+    cv::Mat src;
     cv::Mat dst, detected_edges;
 
     nav_msgs::OccupancyGrid grid_;
@@ -114,6 +106,7 @@ class CirclePacker
     std::string window_name = "Edge Map";
 
     double obSizeThreshold = 3.0; // res = 5cm
+
 };
 
 #endif

@@ -12,14 +12,12 @@ public:
 
   const std::vector<ramp_msgs::MotionState>   generatePoints();
   void init(const ramp_msgs::MotionState start, 
-            const ramp_msgs::MotionState goal,
-            const double max_acc=0.66);
+            const ramp_msgs::MotionState goal);
 
 private:
 
   ReflexxesData reflexxesData_;
   ramp_msgs::MotionState start_, goal_;
-  double max_acc_;
   ros::Duration timeFromStart_;
   ros::Duration timeCutoff_;
   Utility utility_;
