@@ -10,7 +10,7 @@
 
 
 <!-- Start Gazebo simulation and missing tfs for the Turtlebot in Gazebo -->
-<include file="$(find turtlebot_gazebo)/launch/my_turtlebot_maze_dyn.launch" />
+<include file="$(find ramp_launch)/launch/dynamic_world.launch" />
 <!-- <include file="$(find turtlebot_gazebo)/launch/turtlebot_world.launch" /> -->
 <node name="pub_tf_missing_turtlebot_gazebo"  pkg="ramp_sensing" type="pub_tf_missing_turtlebot_gazebo" />
 
