@@ -1,4 +1,4 @@
-ramp
+Ramp
 ====
 
 This is a ROS metapackage for Real-time Adaptive Motion Planning algorithm originally implemented by Sterling McLeod (https://github.com/sterlingm).
@@ -6,6 +6,9 @@ This is a ROS metapackage for Real-time Adaptive Motion Planning algorithm origi
 McLeod, Sterling, and Jing Xiao. "Real-time adaptive non-holonomic motion planning in unforeseen dynamic environments." 2016 IEEE/RSJ International Conference on Intelligent Robots and Systems (IROS). IEEE, 2016.
 
 ![](/results/ramp_gazebo.gif)
+
+## Deep Ramp
+Deep-RAMP uses Deep Learning to optimize the cost function that finds the best trajectory in the population.   
 
 ## To Run 
 ```
