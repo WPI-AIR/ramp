@@ -13,27 +13,45 @@ class Obstacle
 {
   public:
     Obstacle();
-    Obstacle(CircleGroup& cg);
+    Obstacle(const nav_msgs::Odometry p);
+    Obstacle(float radius, int costmap_width, int costmap_height, float costmap_origin_x, float costmap_origin_y, float costmap_res, float global_grid_origin_x, float global_grid_origin_y);
     ~Obstacle(); 
 
     /** Data Members */
+    
     ramp_msgs::Obstacle msg_;
 
+    //Hold odometry information for t and t-1
+    nav_msgs::Odometry odom_t;
+
+    // Hold Circle information
+    Circle cir_;
 
     //Time of last update
     ros::Time last_updated_;
 
-    // Transform
     tf::Transform T_w_init_;
     
 
     /** Methods */
 
-    void update(const CircleGroup& c, const Velocity& v, const double theta);
-    void update(const nav_msgs::Odometry& o);
+    void update(const nav_msgs::Odometry o);
 
-    float radius_;
+    void update(const Circle c, const Velocity& v, const double theta);
+
+    void doTF(bool odom=true);
+
   private:
+    int costmap_width_;
+    int costmap_height_;
+    float costmap_origin_x_;
+    float costmap_origin_y_;
+    float costmap_res_;
+    float x_translate_costmap_;
+    float y_translate_costmap_;
+    float global_grid_origin_x_;
+    float global_grid_origin_y_;
+    float radius_;
 
     Utility utility_;
 };

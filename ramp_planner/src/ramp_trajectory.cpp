@@ -1,5 +1,10 @@
 #include "ramp_trajectory.h"
 
+double no_col_dis = 0.1;
+static std::default_random_engine generator(time(0));
+static std::normal_distribution<double> norm_distri(0, no_col_dis); // no_col_dis is actually standard deviation here
+static std::uniform_real_distribution<double> uni_distri(0, no_col_dis);
+
 RampTrajectory::RampTrajectory(unsigned int id) 
 {
   msg_.id = id;
@@ -12,23 +17,51 @@ RampTrajectory::RampTrajectory(unsigned int id)
 
 RampTrajectory::RampTrajectory(const ramp_msgs::RampTrajectory msg) : msg_(msg) {}
 
-
-bool RampTrajectory::equals(const RampTrajectory& other, const double& epsilon) const 
+const bool RampTrajectory::isSame(const RampTrajectory& other) const 
 {
-  //ROS_INFO("In RampTrajectory::equals");
   if(msg_.id == other.msg_.id) 
   {
     return true;
   }
 
-  //Path templ(msg_.holonomic_path);
-  //Path tempr(other.msg_.holonomic_path);
-  Path templ = getNonHolonomicPath();
-  Path tempr = other.getNonHolonomicPath();
+  double is_same_thre;
+  ros::param::param("/ramp/is_same_thre", is_same_thre, 0.3);
+  
+  int size = msg_.trajectory.points.size() < other.msg_.trajectory.points.size() ?
+             msg_.trajectory.points.size() : other.msg_.trajectory.points.size();
+  for (int i = 0; i < size; i++) {
+    double x1 = msg_.trajectory.points[i].positions[0];
+    double y1 = msg_.trajectory.points[i].positions[1];
+
+    double x2 = other.msg_.trajectory.points[i].positions[0];
+    double y2 = other.msg_.trajectory.points[i].positions[1];
+
+    double dx = x1 - x2;
+    double dy = y1 - y2;
+
+    double dis = sqrt(dx*dx + dy*dy);
+    if (dis > is_same_thre) {
+      return false;
+    }
+  }
+
+  return true;
+}
+
+const bool RampTrajectory::equals(const RampTrajectory& other) const 
+{
+  ////ROS_INFO("In RampTrajectory::equals");
+  if(msg_.id == other.msg_.id) 
+  {
+    return true;
+  }
+
+  Path templ(msg_.holonomic_path);
+  Path tempr(other.msg_.holonomic_path);
 
   ////ROS_INFO("Exiting RampTrajectory::equals");
   //return msg_.holonomic_path.equals(other.msg_.holonomic_path);
-  return templ.equals(tempr, epsilon);
+  return templ.equals(tempr);
 }
 
 
@@ -39,12 +72,10 @@ const double RampTrajectory::getT() const
 
 const Path RampTrajectory::getNonHolonomicPath() const 
 {
-  //ROS_INFO("trajec: %s", toString().c_str());
   Path result;
 
-  for(unsigned int i=0;i<msg_.i_knotPoints.size();i++)
+  for(unsigned int i=0;i<msg_.i_knotPoints.size();i++) 
   {
-    //ROS_INFO("i: %i msg_.i_knotPoints: %i", i, msg_.i_knotPoints[i]);
 
     MotionState ms(msg_.trajectory.points.at( msg_.i_knotPoints.at(i)));
     KnotPoint kp_ms(ms);
@@ -499,5 +530,57 @@ const std::string RampTrajectory::toString(bool printKnotPoints) const
 }
 
 
+void RampTrajectory::print() {
+  for (int i = 0; i < msg_.trajectory.points.size(); i++) {
 
+    printf("(%.2lf;\t%.2lf\t%.2lf\t%.2lf;\t%.2lf\t%.2lf\t%.2lf;\t%.2lf\t%.2lf\t%.2lf)\n",
+          msg_.trajectory.points[i].time_from_start.toSec(),
 
+          msg_.trajectory.points[i].positions[0],
+          msg_.trajectory.points[i].positions[1],
+          msg_.trajectory.points[i].positions[2],
+
+          msg_.trajectory.points[i].velocities[0],
+          msg_.trajectory.points[i].velocities[1],
+          msg_.trajectory.points[i].velocities[2],
+
+          msg_.trajectory.points[i].accelerations[0],
+          msg_.trajectory.points[i].accelerations[1],
+          msg_.trajectory.points[i].accelerations[2]);
+
+  }
+}
+
+const double RampTrajectory::reward() const {
+  double min_obs_dis_limit = 0.93; // m
+  const double max_time = 27.0; // m
+  double reward = 0.0;
+  
+  if (!msg_.feasible) {
+    return reward;
+  }
+  //// p = last non-holonomic point on trajectory
+  trajectory_msgs::JointTrajectoryPoint p = msg_.trajectory.points.at(msg_.trajectory.points.size()-1);
+
+  int holo_sz = msg_.holonomic_path.points.size();
+  double dist = utility_.positionDistance(msg_.holonomic_path.points[holo_sz-1].motionState.positions,
+                                          p.positions);
+  if (dist * dist > 0.2) { // the traj. doesn't reach the goal
+    return reward;
+  }
+  
+  //// Get total time to execute trajectory
+  double T = msg_.trajectory.points.at(msg_.trajectory.points.size()-1).time_from_start.toSec();
+  //// Reward needs to be calculated
+  reward = max_time - T;
+
+  //// Collide with obstacle randomly
+  double tolerance = msg_.min_obs_dis - min_obs_dis_limit; // m
+  if (tolerance < uni_distri(generator)) {
+    reward = 0.0;
+  }
+
+  if (reward < 0.0)
+    reward = 0.0;
+  return reward;
+}

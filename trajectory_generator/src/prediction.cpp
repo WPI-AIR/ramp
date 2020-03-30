@@ -40,7 +40,7 @@ bool Prediction::trajectoryRequest(ramp_msgs::TrajectoryRequest& req, ramp_msgs:
     traj.push_back(ms_init);
   }
 
-  else if(fabs(req.path.points.at(0).motionState.velocities.at(2)) < 0.1) 
+  else if(fabs(req.path.points.at(0).motionState.velocities.at(2)) < 0.01) 
   {
     //ROS_INFO("In straight line prediction");
     Line li;
@@ -50,7 +50,7 @@ bool Prediction::trajectoryRequest(ramp_msgs::TrajectoryRequest& req, ramp_msgs:
     traj = li.generatePoints(); 
   }
 
-  else if(fabs(req.path.points.at(0).motionState.velocities.at(2)) > 0.1) 
+  else if(fabs(req.path.points.at(0).motionState.velocities.at(2)) > 0.01 ) 
   {
     //ROS_INFO("In circle prediction");
     Circle ci;

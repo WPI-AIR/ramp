@@ -1,99 +1,141 @@
 #include "obstacle.h"
 
-Obstacle::Obstacle() {}
+Obstacle::Obstacle() {
+  nav_msgs::Odometry temp;
+  temp.pose.pose.orientation.w = 1.;
+  odom_t      = temp;
+}
 
-Obstacle::Obstacle(CircleGroup& cg)
+Obstacle::Obstacle(const nav_msgs::Odometry o) 
 {
-  msg_.cirGroup.fitCir.center.x = cg.fitCir.center.x;
-  msg_.cirGroup.fitCir.center.y = cg.fitCir.center.y;
-  msg_.cirGroup.fitCir.radius = cg.fitCir.radius;
-  
-  for(int i=0;i<cg.packedCirs.size();i++)
-  {
-    ramp_msgs::Circle pc;
-    pc.center.x = cg.packedCirs[i].center.x;
-    pc.center.y = cg.packedCirs[i].center.y;
-    pc.radius   = cg.packedCirs[i].radius;
+  odom_t      = o;
+}
 
-    msg_.cirGroup.packedCirs.push_back(pc);
-  }
+Obstacle::Obstacle(float radius, int costmap_width, int costmap_height, float costmap_origin_x, float costmap_origin_y, float costmap_res, float global_grid_origin_x, float global_grid_origin_y) 
+  : costmap_width_(costmap_width), costmap_height_(costmap_height), costmap_origin_x_(costmap_origin_x), costmap_origin_y_(costmap_origin_y), costmap_res_(costmap_res)
+{
+  radius_ = radius;
+  msg_.radius = radius;
+
+  float x_max = costmap_width_ + costmap_origin_x_;
+  float x_min = x_max - costmap_width_;
+  float y_max = costmap_height_ + costmap_origin_y_;
+  float y_min = y_max - costmap_height_;
+    
+  global_grid_origin_x_ = global_grid_origin_x;
+  global_grid_origin_y_ = global_grid_origin_y;
+
+  x_translate_costmap_ = x_min;
+  y_translate_costmap_ = y_min;
+  ROS_INFO("width: %i height: %i o_x: %f o_y: %f x_max: %f x_min: %f y_max: %f y_min: %f", costmap_width_, costmap_height_, costmap_origin_x_, costmap_origin_y_, x_max, x_min, y_max, y_min);
 }
 
 Obstacle::~Obstacle() {}
 
-// Tf is needed since update only gives odom data
-void Obstacle::update(const nav_msgs::Odometry& o)
+
+void Obstacle::update(const nav_msgs::Odometry o) 
 {
-  //ROS_INFO("In Obstacle::update(Odometry)");
-  //ROS_INFO("T_w_init_.p: (%f,%f,%f) z_rotation: %f", T_w_init_.getOrigin().getX(), T_w_init_.getOrigin().getY(), T_w_init_.getOrigin().getZ(), tf::getYaw(T_w_init_.getRotation()));
-  
-  tf::Vector3 odom_p(o.pose.pose.position.x, o.pose.pose.position.y, o.pose.pose.position.z);
-  tf::Vector3 p = T_w_init_ * odom_p;
-  //ROS_INFO("odom_p: (%f,%f,%f)", odom_p.getX(), odom_p.getY(), odom_p.getZ());
-  //ROS_INFO("p: (%f,%f,%f)", p.getX(), p.getY(), p.getZ());
-  
-  msg_.ob_ms.positions.clear();
-  msg_.ob_ms.positions.push_back(p.getX());
-  msg_.ob_ms.positions.push_back(p.getY());
-  msg_.ob_ms.positions.push_back( utility_.displaceAngle(tf::getYaw(o.pose.pose.orientation), tf::getYaw(T_w_init_.getRotation())) );
-  
-  // Velocity should only be rotated - don't consider origin of T_w_init_
-  tf::Vector3 odom_v(o.twist.twist.linear.x, o.twist.twist.linear.y, o.twist.twist.linear.z);
-  tf::Transform rot;
-  rot.setOrigin( tf::Vector3(0,0,0) );
-  rot.setRotation( T_w_init_.getRotation() );
-  tf::Vector3 v = rot * odom_v;
+  /*//ROS_INFO("Obstacle odometry passed in:\nPosition: (%f, %f, %f)", 
+      o.pose.pose.position.x, 
+      o.pose.pose.position.y, 
+      tf::getYaw(o.pose.pose.orientation));*/
 
-  //ROS_INFO("odom_v: (%f,%f,%f) v: (%f,%f,%f)", odom_v.getX(), odom_v.getY(), odom_v.getZ(), v.getX(), v.getY(), v.getZ());
+  //Set new odometry infomation
+  odom_t      = o;
 
-  msg_.ob_ms.velocities.clear();
-  msg_.ob_ms.velocities.push_back(v.getX());
-  msg_.ob_ms.velocities.push_back(v.getY());
-  msg_.ob_ms.velocities.push_back(o.twist.twist.angular.z);
+  doTF();
 
-
-  // Set CircleGroup
-  // Make a fitCir with fixed radius and 1 packedCir equal to fitCir
-  msg_.cirGroup.fitCir.center.x = msg_.ob_ms.positions[0];
-  msg_.cirGroup.fitCir.center.y = msg_.ob_ms.positions[1];
-  msg_.cirGroup.fitCir.radius = 0.2;
-  msg_.cirGroup.packedCirs.clear();
-  msg_.cirGroup.packedCirs.push_back(msg_.cirGroup.fitCir);
-
+  //Update time
   last_updated_ = ros::Time::now();
 }
 
-// No tf needed here, should already be in global coords
-void Obstacle::update(const CircleGroup& c, const Velocity& v, const double theta)
+
+void Obstacle::update(const Circle c, const Velocity& v, const double theta)
 {
+  cir_ = c;
+
+  // Call doTF to update ms
+  doTF(false);
+
+  ramp_msgs::MotionState ms;
+  
   /*
-   *  Set the new CircleGroup
-   */
-  msg_.cirGroup.fitCir.center.x = c.fitCir.center.x;
-  msg_.cirGroup.fitCir.center.y = c.fitCir.center.y;
-  msg_.cirGroup.fitCir.radius = c.fitCir.radius;
-  for(int i=0;i<c.packedCirs.size();i++)
-  {
-    ramp_msgs::Circle pc;
-    pc.center.x = c.packedCirs[i].center.x;
-    pc.center.y = c.packedCirs[i].center.y;
-    pc.radius   = c.packedCirs[i].radius;
+   * Convert
+   
+  double x = (c.center.x + global_grid_origin_x_) * costmap_res_;
+  double y = (c.center.y + global_grid_origin_y_) * costmap_res_;
+  ms.positions.push_back(x);
+  ms.positions.push_back(y);*/
 
-    msg_.cirGroup.packedCirs.push_back(pc);
-  }
+  ms.positions.push_back(c.center.x);
+  ms.positions.push_back(c.center.y);
+  
+  ms.positions.push_back(theta);
 
-  // Update motion state
-  msg_.ob_ms.positions.clear();
-  msg_.ob_ms.velocities.clear();
+  ms.velocities.push_back(v.vx);
+  ms.velocities.push_back(v.vy);
+  ms.velocities.push_back(0);
 
-  msg_.ob_ms.positions.push_back(c.fitCir.center.x);
-  msg_.ob_ms.positions.push_back(c.fitCir.center.y);
-  msg_.ob_ms.positions.push_back(theta);
-
-  msg_.ob_ms.velocities.push_back(v.vx);
-  msg_.ob_ms.velocities.push_back(v.vy);
-  msg_.ob_ms.velocities.push_back(0);
+  msg_.ob_ms = ms;
   
   last_updated_ = ros::Time::now();
+}
+
+void Obstacle::doTF(bool odom)
+{
+  ramp_msgs::MotionState ms;
+  ms.positions.clear();
+  ms.velocities.clear();
+  ms.accelerations.clear();
+
+  tf::Vector3 p_st(odom_t.pose.pose.position.x, odom_t.pose.pose.position.y, 0); 
+  
+  /*
+   * Comment out for system-level testing
+   */
+  if(odom)
+  {
+    tf::Vector3 p_st_tf = T_w_init_ * p_st;
+
+    ms.positions.push_back(p_st_tf.getX());
+    ms.positions.push_back(p_st_tf.getY());
+     
+
+    ms.positions.push_back(utility_.displaceAngle( tf::getYaw(T_w_init_.getRotation()), tf::getYaw(odom_t.pose.pose.orientation)));
+
+    ms.velocities.push_back(odom_t.twist.twist.linear.x);
+    ms.velocities.push_back(odom_t.twist.twist.linear.y);
+    ms.velocities.push_back(odom_t.twist.twist.angular.z);
+
+    std::vector<double> zero; zero.push_back(0); zero.push_back(0); 
+    double theta  = utility_.findAngleFromAToB(zero, ms.positions);
+    double phi    = ms.positions.at(2);
+    double v      = ms.velocities.at(0);
+
+    ////////ROS_INFO("teta: %f phi: %f v: %f", teta, phi, v);
+
+
+    /*
+     * Comment out for system-level testing
+     */
+    ms.velocities.at(0) = v*cos(phi);
+    ms.velocities.at(1) = v*sin(phi);
+
+
+    /*
+     * Comment out for system-level testing
+     */
+    if(v < 0) 
+    {
+      ms.positions.at(2) = utility_.displaceAngle(ms.positions.at(2), PI);
+    }
+  }
+
+  // Transform based on costmap parameters
+  else
+  {
+  }
+
+  msg_.ob_ms = ms;
 }
 

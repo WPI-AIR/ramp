@@ -13,7 +13,7 @@ catkin_package(
   INCLUDE_DIRS include
   LIBRARIES ${PROJECT_NAME}
   CATKIN_DEPENDS roscpp
-  DEPENDS 
+  DEPENDS system_lib 
 )
 
 
@@ -30,36 +30,36 @@ set (CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++0x")
 
 
 ### Declare a cpp executable
-add_executable(${PROJECT_NAME} src/main.cpp src/change.cpp src/constraints.cpp src/crossover.cpp src/delete.cpp src/insert.cpp src/modifier.cpp src/range.cpp src/repair.cpp src/swap.cpp src/utility.cpp)
+add_executable(${PROJECT_NAME} src/main.cpp src/change.cpp src/constraints.cpp src/crossover.cpp src/delete.cpp src/insert.cpp src/modifier.cpp src/move.cpp src/range.cpp src/swap.cpp src/utility.cpp)
 target_link_libraries(${PROJECT_NAME} ${catkin_LIBRARIES})
 add_dependencies(${PROJECT_NAME} ramp_msgs_generate_messages_cpp)
-
+add_dependencies(${PROJECT_NAME} ${ramp_msgs_EXPORTED_TARGETS})
 
 
 
 #========# Unit tests ==========#
 
-#catkin_add_gtest(insert_test test/insert_test.cpp src/constraints.cpp src/utility.cpp src/insert.cpp)
-#target_link_libraries(insert_test ${catkin_LIBRARIES})
+catkin_add_gtest(insert_test test/insert_test.cpp src/constraints.cpp src/utility.cpp src/insert.cpp)
+target_link_libraries(insert_test ${catkin_LIBRARIES})
 
-#catkin_add_gtest(delete_test test/delete_test.cpp src/constraints.cpp src/utility.cpp src/delete.cpp)
-#target_link_libraries(delete_test ${catkin_LIBRARIES})
+catkin_add_gtest(delete_test test/delete_test.cpp src/constraints.cpp src/utility.cpp src/delete.cpp)
+target_link_libraries(delete_test ${catkin_LIBRARIES})
 
-#catkin_add_gtest(change_test test/change_test.cpp src/constraints.cpp src/utility.cpp src/change.cpp)
-#target_link_libraries(change_test ${catkin_LIBRARIES})
+catkin_add_gtest(change_test test/change_test.cpp src/constraints.cpp src/utility.cpp src/change.cpp)
+target_link_libraries(change_test ${catkin_LIBRARIES})
 
-#catkin_add_gtest(swap_test test/swap_test.cpp src/constraints.cpp src/utility.cpp src/swap.cpp)
-#target_link_libraries(swap_test ${catkin_LIBRARIES})
+catkin_add_gtest(swap_test test/swap_test.cpp src/constraints.cpp src/utility.cpp src/swap.cpp)
+target_link_libraries(swap_test ${catkin_LIBRARIES})
 
 
 
 
 #========# Sub-system tests ==========#
 
-#catkin_add_gtest(path_modification_testFunctionality test/path_modification_testFunctionality.cpp src/change.cpp src/constraints.cpp src/crossover.cpp src/delete.cpp src/insert.cpp src/modifier.cpp src/range.cpp src/swap.cpp src/utility.cpp)
-#target_link_libraries(path_modification_testFunctionality ${catkin_LIBRARIES} pthread)
+catkin_add_gtest(path_modification_testFunctionality test/path_modification_testFunctionality.cpp src/change.cpp src/constraints.cpp src/crossover.cpp src/delete.cpp src/insert.cpp src/modifier.cpp src/move.cpp src/range.cpp src/swap.cpp src/utility.cpp)
+target_link_libraries(path_modification_testFunctionality ${catkin_LIBRARIES} pthread)
 
-#catkin_add_gtest(path_modification_testPerformance test/path_modification_testPerformance.cpp src/change.cpp src/constraints.cpp src/crossover.cpp src/delete.cpp src/insert.cpp src/modifier.cpp src/range.cpp src/swap.cpp src/utility.cpp)
-#target_link_libraries(path_modification_testPerformance ${catkin_LIBRARIES} pthread)
+catkin_add_gtest(path_modification_testPerformance test/path_modification_testPerformance.cpp src/change.cpp src/constraints.cpp src/crossover.cpp src/delete.cpp src/insert.cpp src/modifier.cpp src/move.cpp src/range.cpp src/swap.cpp src/utility.cpp)
+target_link_libraries(path_modification_testPerformance ${catkin_LIBRARIES} pthread)
 
 ##============================================================================

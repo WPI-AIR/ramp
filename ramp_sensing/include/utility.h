@@ -8,7 +8,6 @@
 #include <math.h>
 #include "ramp_msgs/Path.h"
 #include "ramp_msgs/Range.h"
-#include "ramp_msgs/CircleGroup.h"
 #include <ros/console.h>
 #include <vector>
 #include <chrono>
@@ -19,22 +18,15 @@
 #include <opencv2/imgproc/imgproc.hpp>
 #include <opencv2/highgui/highgui.hpp>
 #include <opencv2/features2d/features2d.hpp>
-#include "circle_filter.h" // needs to be included AFTER OpenCV
+#include "circle_filter.h" // Needs to be included AFTER opencv
 using namespace std::chrono;
 
 #define PI 3.14159f
 
-struct Point
-{
-  double x;
-  double y;
-};
-
-
 struct Edge
 {
-  Point start;
-  Point end;
+  cv::Point start;
+  cv::Point end;
 };
 
 struct Normal
@@ -56,10 +48,15 @@ struct Polygon
 
 struct Cell
 {
-  Point p;
+  cv::Point p;
   double dist;
 };
 
+struct Point
+{
+  double x;
+  double y;
+};
 
 struct Circle
 {
@@ -80,13 +77,6 @@ struct CompareDist
   }
 };
 
-
-struct CircleGroup
-{
-  Circle fitCir;
-  std::vector<Circle> packedCirs;
-};
-
 struct CircleOb
 {
   CircleOb() {}
@@ -94,7 +84,6 @@ struct CircleOb
   {
     delete kf;
   }
-  CircleGroup cirGroup;
   Circle cir;
   CircleFilter* kf;
 
@@ -115,7 +104,7 @@ struct CircleOb
 
 struct CircleMatch
 {
-  int i_cir;
+  int i_cirs;
   int i_prevCir;
   double dist;
   double delta_r;
@@ -128,8 +117,6 @@ class Utility {
     Utility();
 
     std::vector<ramp_msgs::Range> standardRanges_;
-
-    bool checkAngleBetweenAngles(const double angle, const double min, const double max) const;
 
     const double positionDistance(const std::vector<double> a, const std::vector<double> b) const;
     const double positionDistance(const double ax, const double ay, const double bx, const double by) const;
@@ -146,8 +133,5 @@ class Utility {
     static bool compareCircleMatches(const CircleMatch& a, const CircleMatch& b);
 
     const std::string toString(const ramp_msgs::Path p) const;    
-    const std::string toString(const ramp_msgs::MotionState mp) const;    
-    const std::string toString(const CircleGroup cirGroup) const;
-    const std::string toString(const ramp_msgs::CircleGroup cirGroup) const;
 };
 #endif

@@ -53,8 +53,8 @@ int main(int argc, char** argv)
   ramp_msgs::ModificationRequest mod;
   mod.request.paths.push_back(p1);
   mod.request.op = "move";
-  mod.request.repair_dir = PI/4.;
-  mod.request.repair_dist = 1.5;
+  mod.request.move_dir = PI/4.;
+  mod.request.move_dist = 1.5;
 
   if(client_path.call(mod))
   {
@@ -69,7 +69,7 @@ int main(int argc, char** argv)
   ramp_msgs::TrajectoryRequest tr;
   tr.path = mod.response.mod_paths[0];
   tr.type = HYBRID;
-  tr.print = true;
+  tr.is_print = true;
   
   std::vector<ramp_msgs::BezierCurve> curves;
   

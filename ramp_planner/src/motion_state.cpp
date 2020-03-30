@@ -23,6 +23,25 @@ MotionState::MotionState(const trajectory_msgs::JointTrajectoryPoint p) : mobile
 
 MotionState::MotionState(const ramp_msgs::MotionState ms) : msg_(ms), mobile_base_k_(2) {}
 
+MotionState::MotionState(double x, double y, double theta,
+                         double vx, double vy, double vtheta,
+                         double ax, double ay, double atheta,
+                         double time) {
+                           msg_.positions.push_back(x);
+                           msg_.positions.push_back(y);
+                           msg_.positions.push_back(theta);
+
+                           msg_.velocities.push_back(vx);
+                           msg_.velocities.push_back(vy);
+                           msg_.velocities.push_back(vtheta);
+
+                           msg_.accelerations.push_back(ax);
+                           msg_.accelerations.push_back(ay);
+                           msg_.accelerations.push_back(atheta);
+
+                           msg_.time = time;
+                         }
+
 
 
 
@@ -98,11 +117,8 @@ const trajectory_msgs::JointTrajectoryPoint MotionState::getJTP() const
 }
 
 /** equals comparison */
-const bool MotionState::equals(const MotionState& ms, const double epsilon) const 
+const bool MotionState::equals(const MotionState& ms) const 
 {
-  //ROS_INFO("In MotionState::equals");
-  //ROS_INFO("this: %s\nms: %s\nepsilon: %f", toString().c_str(), ms.toString().c_str(), epsilon);
-  
   if(msg_.positions.size() != ms.msg_.positions.size()) 
   {
     return false;
@@ -123,9 +139,9 @@ const bool MotionState::equals(const MotionState& ms, const double epsilon) cons
     return false;
   }
 
+  double epsilon = 0.01;
   for(uint8_t i_p=0;i_p<msg_.positions.size();i_p++) 
   {
-    //ROS_INFO("Position %i dist: %f", i_p, fabs(msg_.positions.at(i_p) - ms.msg_.positions.at(i_p)));
     if( fabs(msg_.positions.at(i_p) - ms.msg_.positions.at(i_p)) > epsilon ) 
     {
       return false;
@@ -134,7 +150,6 @@ const bool MotionState::equals(const MotionState& ms, const double epsilon) cons
 
   for(uint8_t i_p=0;i_p<msg_.velocities.size();i_p++) 
   {
-    //ROS_INFO("Velocity %i dist: %f", i_p, fabs(msg_.velocities.at(i_p) - ms.msg_.velocities.at(i_p)));
     if( fabs(msg_.velocities.at(i_p) - ms.msg_.velocities.at(i_p)) > epsilon ) 
     {
       return false;
@@ -143,7 +158,6 @@ const bool MotionState::equals(const MotionState& ms, const double epsilon) cons
 
   for(uint8_t i_p=0;i_p<msg_.accelerations.size();i_p++) 
   {
-    //ROS_INFO("Acceleration %i dist: %f", i_p, fabs(msg_.accelerations.at(i_p) - ms.msg_.accelerations.at(i_p)));
     if( fabs(msg_.accelerations.at(i_p) - ms.msg_.accelerations.at(i_p)) > epsilon ) 
     {
       return false;
@@ -204,6 +218,7 @@ tf::Vector3 MotionState::transformBasePosition(const tf::Transform t)
 {
   //ROS_INFO("In MotionState::transformBasePosition");
   //ROS_INFO("t: (%f, %f) yaw: %f", t.getOrigin().getX(), t.getOrigin().getY(), tf::getYaw(t.getRotation()));
+
   //ROS_INFO("msg: %s", toString().c_str());
 
   tf::Vector3 p(msg_.positions.at(0), msg_.positions.at(1), 0);
@@ -227,9 +242,7 @@ void MotionState::transformBase(const tf::Transform t)
   msg_.positions.at(1) = p.getY();
   
   // Get the new orientation
-  //ROS_INFO("msg_.positions[2]: %f t.getRotation: %f", msg_.positions.at(2), tf::getYaw(t.getRotation()));
   msg_.positions.at(2) = utility_.displaceAngle(msg_.positions.at(2), tf::getYaw(t.getRotation()));
-  //ROS_INFO("Final msg_.positions[2]: %f", msg_.positions[2]);
 } //End transformBase
 
 

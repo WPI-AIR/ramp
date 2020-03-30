@@ -2,12 +2,12 @@
 
 ControlHandler::ControlHandler(const ros::NodeHandle& h) : handle_(h) 
 {
-  pub_bestTrajec_ = handle_.advertise<ramp_msgs::RampTrajectory>("bestTrajec", 1000);
-  pub_population_ = handle_.advertise<ramp_msgs::Population>("population", 1000);
-  
-  pub_imminent_collision_ = handle_.advertise<std_msgs::Bool>("imminent_collision", 1000);
+  nb_best_traj_switches = 0;
 
-  pub_latestState_ = handle_.advertise<ramp_msgs::MotionState>("/updateAfterTf", 10);
+  pub_bestTrajec_ = handle_.advertise<ramp_msgs::RampTrajectory>("bestTrajec", 1);
+  pub_population_ = handle_.advertise<ramp_msgs::Population>("population", 1);
+  
+  pub_imminent_collision_ = handle_.advertise<std_msgs::Bool>("imminent_collision", 1);
 
   // Set number of obstacles
   std::stringstream str;
@@ -27,6 +27,7 @@ ControlHandler::ControlHandler(const ros::NodeHandle& h) : handle_(h)
 
 void ControlHandler::send(ramp_msgs::RampTrajectory bestTrajec) 
 {
+  nb_best_traj_switches++;
   pub_bestTrajec_.publish(bestTrajec);
 }
 
@@ -45,9 +46,4 @@ void ControlHandler::sendIC(std_msgs::Bool value)
 void ControlHandler::sendObIC(const int i, std_msgs::Bool value)
 {
   pub_ob_imminent_collision_.at(i).publish(value);
-}
-
-void ControlHandler::sendLatestState(ramp_msgs::MotionState ms)
-{
-  pub_latestState_.publish(ms);
 }

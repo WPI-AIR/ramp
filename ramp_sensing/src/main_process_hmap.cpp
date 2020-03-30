@@ -7,8 +7,6 @@
 #include <vector>
 #include "circle_packer.h"
 #include "ramp_msgs/HilbertMap.h"
-#include "ramp_msgs/ObstacleList.h"
-#include "obstacle.h"
 
 using namespace std;
 using namespace cv;
@@ -17,10 +15,8 @@ Mat hmap_mat;
 Mat hmap_edges;
 
 
-ros::Publisher pub_rviz, pub_obs;
+ros::Publisher pub_rviz;
 visualization_msgs::MarkerArray inner_radii, outer_radii;
-ramp_msgs::ObstacleList hmap_obs;
-
 
 
 void CannyThreshold(int, void*)
@@ -28,8 +24,8 @@ void CannyThreshold(int, void*)
   /// Reduce noise with a kernel 3x3
   blur( hmap_mat, hmap_edges, Size(3,3) );
   
-  //imshow("after blur src", hmap_edges);
-  //waitKey(0);
+  imshow("after blur src", hmap_edges);
+  waitKey(0);
 
 
   // Somehow, lowThreshold is being converted to unsigned int before this point
@@ -107,25 +103,32 @@ vector<cv::Point> bhFindLocalMaximum(InputArray _src,int neighbor=2)
 
   // Dilate
   dilate(peak_img,peak_img,Mat(),cv::Point(-1,-1),neighbor);
-  //imshow("dilate", peak_img);
+  imshow("dilate", peak_img);
   peak_img = peak_img - src;
   resize(peak_img, peak_img, Size(peak_img.cols*4, peak_img.rows*4));
-  //imshow("dilate-src", peak_img);
+  imshow("dilate-src", peak_img);
 
+  
+  waitKey(0);
 
   Mat flat_img;
   erode(src,flat_img,Mat(),cv::Point(-1,-1),neighbor);
-  //imshow("erode", flat_img);
+  imshow("erode", flat_img);
   flat_img = src - flat_img;
-  //imshow("erode-src", flat_img);
+  imshow("erode-src", flat_img);
+
+  waitKey(0);
 
 
   threshold(peak_img,peak_img,0,255,CV_THRESH_BINARY);
   threshold(flat_img,flat_img,0,255,CV_THRESH_BINARY);
   bitwise_not(flat_img,flat_img);
 
-  //imshow("thr_dil", peak_img);
-  //imshow("thr_ero", flat_img);
+  imshow("thr_dil", peak_img);
+  imshow("thr_ero", flat_img);
+  waitKey(0);
+  
+  printf("\nDone threshold\n");
 
   // Set 255 to any pixels that flat_img has nonzero value
   peak_img.setTo(cv::Scalar::all(255),flat_img);
@@ -161,15 +164,15 @@ vector<cv::Point> bhFindLocalMaximum(InputArray _src,int neighbor=2)
 }
 
 
-void thresholdHilbertMap(Mat hmap, Mat& result, int thresholdValue)
+void thresholdHilbertMap(Mat hmap, Mat& result)
 {
-  threshold(hmap, result, thresholdValue, 255, CV_THRESH_BINARY);
-  //imshow("threshold", result);
-  //waitKey(0);
+  threshold(hmap, result, 50, 255, CV_THRESH_BINARY);
+  imshow("threshold", result);
+  waitKey(0);
 }
 
 
-visualization_msgs::Marker getMarker(Circle cir, int id, bool red, bool longTime=true)
+visualization_msgs::Marker getMarker(Circle cir, int id)
 {
   visualization_msgs::Marker result;
 
@@ -205,23 +208,14 @@ visualization_msgs::Marker getMarker(Circle cir, int id, bool red, bool longTime
   result.scale.x = radius*2.00f;
   result.scale.y = radius*2.00f;
   result.scale.z = 0.1;
-  result.color.r = red ? 1 : 0;
-  result.color.g = red ? 0 : 1;
+  result.color.r = 0;
+  result.color.g = 1;
   result.color.b = 0;
-  result.color.a = 0.5;
-  result.lifetime = longTime ? ros::Duration(120) : ros::Duration(5);
+  result.color.a = 1;
+  result.lifetime = ros::Duration(10);
 
 
   return result;
-}
-
-visualization_msgs::Marker getMarker(ramp_msgs::Circle cir, int id, bool red=false, bool longTime=false)
-{
-  Circle c;
-  c.center.x = cir.center.x;
-  c.center.y = cir.center.y;
-  c.radius = cir.radius;
-  return getMarker(c, id, red, longTime);
 }
 
 void hmapCb(const ramp_msgs::HilbertMap& hmap)
@@ -233,90 +227,24 @@ void hmapCb(const ramp_msgs::HilbertMap& hmap)
   // Create cv::Mat  
   hmap_mat = hmap_gmap.probMap();
   cv::transpose(hmap_mat, hmap_mat);
-  //imshow("hmap", hmap_mat);
+  imshow("hmap", hmap_mat);
 
   Mat hmap_thresh;
-  int threshold = 25;
 
-  thresholdHilbertMap(hmap_mat, hmap_thresh, threshold);
-  //imshow("hmap_thresh", hmap_thresh);
-  //cv::waitKey(0);
+  thresholdHilbertMap(hmap_mat, hmap_thresh);
 
-  /*
-   * Do circle packing on all hmap obstacles
-   */
-  // Note that circle packing is only on hilbert_map branch for now
-  // Use cv::Mat constructor b/c we threshold the grid before passing to CirclePacker
-  CirclePacker cp(hmap_thresh, hmap.map);
-  std::vector<CircleGroup> blankListForLargeObs;
-  std::vector<CircleGroup> ob_cirs = cp.getGroups(blankListForLargeObs, true);
-
-  ROS_INFO("ob_cirs.size(): %i", (int)ob_cirs.size());
-  for(int i=0;i<ob_cirs.size();i++)
-  {
-    ROS_INFO("ob_cirs[%i].fitCir.radius: %f", i, ob_cirs[i].fitCir.radius);
-    ROS_INFO("ob_cirs[%i].packedCir.size(): %i", i, (int)ob_cirs[i].packedCirs.size());
-  }
+  CirclePacker cp(hmap_thresh);
+  std::vector<Circle> obs = cp.goMyBlobs(true);
+  ROS_INFO("obs.size(): %i", (int)obs.size());
   ROS_INFO("hmap origin: (%f,%f) resolution: %f", hmap.map.info.origin.position.x, hmap.map.info.origin.position.y, hmap.map.info.resolution);
   
-  // Get map details
   double x_origin = hmap.map.info.origin.position.x / hmap.map.info.resolution;
   double y_origin = hmap.map.info.origin.position.y / hmap.map.info.resolution;
   double gamma = hmap.gamma;
   double sigma = sqrt( (1.f/2.f*gamma) );
   ROS_INFO("gamma: %f sigma: %f", gamma, sigma);
   ROS_INFO("x_origin: %f y_origin: %f", x_origin, y_origin);
-
-  
-  Velocity v_zero;
-  double theta = 0;
-
-  /*
-   * Create a PackedObstacle instance for each circle
-   */
-  hmap_obs.obstacles.clear();
-  for(int i=0;i<ob_cirs.size();i++)
-  {
-    // Convert circles to global coordinates
-    for(int j=0;j<ob_cirs[i].packedCirs.size();j++)
-    {
-      // Convert position and radius to global coords and resolution
-      ob_cirs[i].packedCirs[j].center.x = (ob_cirs[i].packedCirs[j].center.x * hmap.map.info.resolution) + hmap.map.info.origin.position.x;
-      ob_cirs[i].packedCirs[j].center.y = (ob_cirs[i].packedCirs[j].center.y * hmap.map.info.resolution) + hmap.map.info.origin.position.y;
-      ob_cirs[i].packedCirs[j].radius *= hmap.map.info.resolution;
-    }
-
-    // Create Obstacle object
-    Obstacle o(ob_cirs[i]);
-    hmap_obs.obstacles.push_back(o.msg_);
-  }
-
-  int id=100;
-  // For each Obstacle, make markers for each circle
-  for(int i=0;i<hmap_obs.obstacles.size();i++)
-  {
-    // Size of circle vector will change so we need to store old size
-    int N = hmap_obs.obstacles[i].cirGroup.packedCirs.size();
-    for(int j=0;j<N;j++)
-    {
-      //ROS_INFO("i: %i j: %i 100+j+i+N: %i 200+N+i+j: %i", i, j, 100+((j*(i+1))+j)+N, 200+N+i+j);
-      inner_radii.markers.push_back(getMarker(hmap_obs.obstacles[i].cirGroup.packedCirs[j], ++id, true, false));
-      
-      // Increase radius for outer circle
-      ramp_msgs::Circle inflated = hmap_obs.obstacles[i].cirGroup.packedCirs[j];
-      inflated.radius += sigma;
-      
-      // Push that circle onto PackedOb vector
-      hmap_obs.obstacles[i].cirGroup.packedCirs.push_back(inflated);
-      
-      outer_radii.markers.push_back(getMarker(inflated, ++id, false));
-    }
-  }
-  //ROS_INFO("Done creating Obstacle objects");
-
-
-
-  /*for(int i=0;i<obs.size();i++)
+  for(int i=0;i<obs.size();i++)
   {
     ROS_INFO("Before Obstacle %i: Center - (%f,%f) Radius - %f", i, obs[i].center.x, obs[i].center.y, obs[i].radius);
     resize(hmap_thresh, hmap_thresh, Size(hmap_thresh.cols*4, hmap_thresh.rows*4));
@@ -340,16 +268,11 @@ void hmapCb(const ramp_msgs::HilbertMap& hmap)
     inner_radii.markers[i].color.r = 255;
     inner_radii.markers[i].color.g = 0;
     inner_radii.markers[i].color.b = 0;
-    inner_radii.markers[i].color.a = 1;
-    inner_radii.markers[i].pose.position.z += 0.1;
-  }*/
+    inner_radii.markers[i].pose.position.z += 0.01;
+  }
 
-
-
-  ROS_INFO("outer_radii.size(): %i inner_radii.size(): %i hmap_obs.size(): %i", (int)outer_radii.markers.size(), (int)inner_radii.markers.size(), (int)hmap_obs.obstacles.size());
   pub_rviz.publish(outer_radii);
   pub_rviz.publish(inner_radii);
-  pub_obs.publish(hmap_obs); 
 }
 
 
@@ -360,7 +283,6 @@ int main(int argc, char** argv)
 
   ros::Subscriber sub_hmap = handle.subscribe("/hilbert_map", 10, &hmapCb);
   pub_rviz = handle.advertise<visualization_msgs::MarkerArray>("visualization_marker_array", 1);
-  pub_obs = handle.advertise<ramp_msgs::ObstacleList>("hmap_obstacles", 1);
   
   printf("\nSpinning\n");
   ros::spin();

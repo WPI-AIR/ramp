@@ -23,7 +23,7 @@ void init_advertisers_subscribers(MobileRobot& robot, ros::NodeHandle& handle, b
 
   
   // Publishers
-  robot.pub_twist_ = handle.advertise<geometry_msgs::Twist>(MobileRobot::TOPIC_STR_TWIST, 1000);
+  robot.pub_twist_ = handle.advertise<geometry_msgs::Twist>(MobileRobot::TOPIC_STR_TWIST, 1);
   robot.pub_update_ = handle.advertise<ramp_msgs::MotionState>(MobileRobot::TOPIC_STR_UPDATE, 1000);
 
   if(simulation) 
@@ -130,12 +130,13 @@ int main(int argc, char** argv)
   /*
    * Get transform information from odom to the frame the planner uses
    */
-  ros::Duration d(0.5);
+  ros::Duration d(2.0);
   d.sleep();
 
   tf::TransformListener listen;
   listen.waitForTransform(global_frame, "odom", ros::Time(0), ros::Duration(2.0));
   ROS_INFO("Time: %f", ros::Time::now().toSec());
+  d.sleep();
   listen.lookupTransform(global_frame, "odom", ros::Time(0), robot.tf_global_odom_);
   ROS_INFO("(ramp_control) Odom tf: translate: (%f, %f) rotation: %f", robot.tf_global_odom_.getOrigin().getX(), robot.tf_global_odom_.getOrigin().getX(), robot.tf_global_odom_.getRotation().getAngle());
   robot.tf_rot_ = robot.tf_global_odom_.getRotation().getAngle();
@@ -159,7 +160,7 @@ int main(int argc, char** argv)
   // With rate even as high as 1000, goes down to ~10-15%
   // Shouldn't have problem moving right away on a trajectory with 1000Hz as the rate
   ros::Rate r(1000);
-  while(ros::ok()) 
+  while(ros::ok())
   {
     robot.moveOnTrajectory();
     r.sleep();

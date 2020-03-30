@@ -13,9 +13,19 @@
 #include "rviz_handler.h"
 #include "parameter_handler.h"
 #include "bezier_curve.h"
+#include "ramp_msgs/EnvironmentSrv.h"
+#include "ramp_msgs/ParameterUpdates.h"
+#include "ramp_msgs/RampObservationOneRunning.h"
+#include <std_srvs/Empty.h>
+#include <std_msgs/Float64.h>
+#include <std_msgs/Empty.h>
+#include <std_msgs/Int64.h>
+#include <std_msgs/Bool.h>
+#include <std_msgs/MultiArrayDimension.h>
 #include <type_traits>
 #include <tf/transform_broadcaster.h>
 
+#define ENV_SRV_NAME "response2para_update"
 
 struct ModificationResult 
 {
@@ -44,6 +54,14 @@ class Planner {
      ************** Data Members ***************
      *******************************************/
     
+    bool is_population_initialized;
+    double biggest_fitness;
+    int no_better_cnt;
+    const int MAX_NO_BETTER_CNT = 200;
+    const double ZERO = 0.05;
+    double start_run_time = -1.0;
+    int push_ms_cnt = 0;
+    std::vector<Path> preset_path;
 
     // Hold the population of trajectories, 
     // the velocities of each trajectory's segments,
@@ -97,7 +115,9 @@ class Planner {
     std::vector<double> COLL_DISTS;
     int i_COLL_DISTS_;
 
-    
+    // observation after one running
+    ramp_msgs::RampObservationOneRunning obser_one_run;
+
     
     /********************************************
      ***************** Methods ******************
@@ -108,12 +128,13 @@ class Planner {
     // Start planning
     trajectory_msgs::JointTrajectoryPoint prepareForTestCase();
     void planningCycles(int num);
-    void go();
+    void offlineGo();
+    void go(const ros::NodeHandle& h);
     void goTest(float sec=-1);
     
-    // Initialization 
+    void drawTrajectory();
+    // Initialization
     void initPopulation();
-    void initPopulationHolo();
     void init(const uint8_t             i,                
               const ros::NodeHandle&    h, 
               const MotionState         s,                
@@ -127,9 +148,7 @@ class Planner {
               const std::string         global_frame,
               const std::string         update_topic,
               const TrajectoryType      pop_type=HYBRID,
-              const int                 num_ppcs=0,
-              bool                      stop_after_ppcs=false,
-              const bool                sensingBeforeCC=0,
+              const int                 gens_before_cc=0,
               const double              t_sc_rate=10.,
               const double              t_fixed_cc=2.,
               const bool                only_sensing=0,
@@ -149,13 +168,10 @@ class Planner {
     void buildLineList(const RampTrajectory& trajec, int id, visualization_msgs::Marker& result) const;
 
     // Evaluate the population 
-    void evaluateTrajectory(RampTrajectory& t, bool hmap=false);
-
-    // full=false specifies that the fitness should be skipped when evaluating
-    // This was used for evaluating movingOn, but I'm not sure why
-    //void evaluateTrajectory(RampTrajectory& t, bool full=true);
-    
-    void evaluatePopulation(bool hmap=false);
+    void evaluateTrajectory(RampTrajectory& t, bool full=true);
+    void evaluatePopulation();
+    bool genBetter(); // whether the current generation result becomes better
+                      // than the best in history
     
     // Modify trajectory or path
     const std::vector<Path> modifyPath();
@@ -183,9 +199,12 @@ class Planner {
 
 
 
-    void buildEvaluationSrv(std::vector<RampTrajectory>& trajecs, ramp_msgs::EvaluationSrv& result, bool hmap=false) const;
+    void buildEvaluationSrv(std::vector<RampTrajectory>& trajecs, ramp_msgs::EvaluationSrv& result) const;
     void buildEvaluationSrv(const RampTrajectory& trajec, ramp_msgs::EvaluationSrv& result) const;
-    void buildEvaluationRequest(const RampTrajectory& trajec, ramp_msgs::EvaluationRequest& result, bool hmap=false) const;
+    void buildEvaluationRequest(const RampTrajectory& trajec, ramp_msgs::EvaluationRequest& result, bool full=true) const;
+    
+    
+    bool envSrvCallback(ramp_msgs::EnvironmentSrv::Request &req, ramp_msgs::EnvironmentSrv::Response &res);
 
 
     // Request information from other packages
@@ -202,11 +221,11 @@ class Planner {
 
 
     // Many trajectories
-    void requestEvaluation(std::vector<RampTrajectory>& trajecs, bool hmap=false);
+    void requestEvaluation(std::vector<RampTrajectory>& trajecs);
 
     // One trajectory
     void requestEvaluation(ramp_msgs::EvaluationRequest& request);
-    void requestEvaluation(RampTrajectory& t, bool hmap=false);
+    void requestEvaluation(RampTrajectory& t, bool full=true);
 
 
 
@@ -233,8 +252,7 @@ class Planner {
     const std::vector<MotionState> setMi(const RampTrajectory& trj_current) const;
 
     std::vector<RampTrajectory> ob_trajectory_;
-    std::vector<ramp_msgs::Obstacle> obs_;
-    std::vector<ramp_msgs::Obstacle> obsHmap_;
+    std::vector<double> ob_radii_;
 
 
     const MotionType findMotionType(const ramp_msgs::Obstacle ob) const;
@@ -244,10 +262,6 @@ class Planner {
     void sensingCycleCallback     (const ramp_msgs::ObstacleList& msg);
     void updateCbPose(const geometry_msgs::PoseWithCovarianceStamped msg);
     void updateCbControlNode(const ramp_msgs::MotionState& msg);
-
-
-    void hilbertMapObsCb(const ramp_msgs::ObstacleList& hmapObs);
-
 
     /** Data */
 
@@ -322,10 +336,7 @@ class Planner {
     void    computeFullSwitch(const RampTrajectory& from, const RampTrajectory& to, const double& t_start, RampTrajectory& result);
 
 
-    void getTransPop(const Population& pop, const RampTrajectory& movingOn, Population& result);
     void getTransitionTrajectory(const RampTrajectory& movingOn, const RampTrajectory& trgt_traj, const double& t, RampTrajectory& result);
-    void switchTrajectory(const RampTrajectory& from, const RampTrajectory& to, std::vector<RampTrajectory>& result);
-    void computeFullSwitch(const RampTrajectory& from, const RampTrajectory& to, RampTrajectory& result);
     
     
     const bool checkIfSwitchCurveNecessary(const RampTrajectory from, const RampTrajectory to)
@@ -429,8 +440,8 @@ class Planner {
     // Index of previous best trajectory
     unsigned int        i_best_prev_;
 
-    // True if doing SCs while doing PCs before CCs start
-    bool                sensingBeforeCC_;
+    // Number of generations to wait before starting control cycles
+    unsigned int        generationsBeforeCC_;
 
     // Maximum number of generations to occur between control cycles
     unsigned int        generationsPerCC_;
@@ -488,10 +499,8 @@ class Planner {
 
 
     ros::Time t_prevCC_ros_;
-    std::chrono::high_resolution_clock::time_point t_startRamp_;
     std::chrono::high_resolution_clock::time_point t_prevCC_;
     std::chrono::high_resolution_clock::time_point t_prevPC_;
-    std::chrono::high_resolution_clock::time_point t_prevSC_;
     uint8_t pc_switch_;
 
 
@@ -503,7 +512,6 @@ class Planner {
     std::vector<double> error_correct_val_pos_, error_correct_val_or_;
     double avg_error_correct_val_pos_, avg_error_correct_val_or_;
     
-
 
 
     bool reset_;
@@ -530,7 +538,6 @@ class Planner {
     tf::StampedTransform tf_global_odom_rot_;
     
     
-    int i_prevBest_;
     
     
     
@@ -544,12 +551,6 @@ class Planner {
     double avg_adapt_dur_, avg_trans_dur_, avg_cc_dur_, avg_mutate_dur_, avg_pc_dur_, avg_trajec_dur_, 
            avg_eval_dur_, avg_error_correct_dur_, avg_sc_dur_;
 
-    int num_ppcs_;
-    bool stop_after_ppcs_;
-
-    bool forceMinMod_;
-    bool evalHMap_;
-
     /*
      * General data
      */
@@ -558,7 +559,6 @@ class Planner {
     int num_pcs_;                                         // go()
     int num_scs_;                                         // sensingCycleCallback
     int num_ccs_;                                         // controlCycleCallback
-    int num_switches_;
     int pop_size_;                                        // init
     std::vector<ros::Duration> d_compute_switch_all_ts_;  // doControlCycle
     std::vector<int> switch_t_size_;                      // getTransitionTrajectory
@@ -578,7 +578,6 @@ class Planner {
     std::ofstream f_num_pcs_;
     std::ofstream f_num_scs_;
     std::ofstream f_num_ccs_;
-    std::ofstream f_num_switches_;
     std::ofstream f_pop_size_;
     std::ofstream f_compute_switch_all_ts_;
     std::ofstream f_switch_t_size_;
@@ -602,15 +601,14 @@ class Planner {
      */
     // Variables to hold data
     std::vector<double> pc_durs_;  // planningCycleCallback
-    std::vector<double> pc_freqs_;  // planningCycleCallback
+    std::vector<double> pc_freq_;  // planningCycleCallback
     std::vector<double> sc_durs_;  // sensingCycleCallback
-    std::vector<double> sc_freqs_;                    // doControlCycle
+    int sc_freq_;                         // init
     std::vector<double> cc_durs_;                    // doControlCycle
-    std::vector<double> cc_freqs_;                    // doControlCycle
+    std::vector<double> cc_freq_;                    // doControlCycle
     std::vector<double> trajec_durs_;                // requestTrajectory
     std::vector<double> eval_durs_;                  // requestEvaluation
     std::vector<double> mod_durs_;                   // modification
-    std::vector<double> mod_traj_durs_;              // modification including trajec
     std::vector<double> mutate_durs_;                // planningCycleCallback
     std::vector<double> error_correct_durs_eval_;    // planningCycleCallback
     std::vector<double> error_correct_durs_no_eval_; // planningCycleCallback
@@ -625,13 +623,11 @@ class Planner {
     std::ofstream f_trajec_durs_;
     std::ofstream f_eval_durs_;
     std::ofstream f_mod_durs_;
-    std::ofstream f_mod_traj_durs_;
     std::ofstream f_mutate_durs_;
     std::ofstream f_error_correct_durs_eval_;
     std::ofstream f_error_correct_durs_no_eval_;
 
     void printDurationData() const;
-
 
     
     /*
@@ -653,6 +649,13 @@ class Planner {
     void writeGeneralData();
     void writeDurationData();
     void writeData();
+
+  private:
+    ros::NodeHandle rh;
+    ros::ServiceClient gazebo_srv_client;
+    ros::Publisher pub_reset_odom;
+    ros::Publisher off_r_pub;
+    ros::ServiceServer env_ready_srv;
 };
 
 #endif

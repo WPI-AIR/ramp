@@ -4,8 +4,7 @@ Modifier::Modifier(ramp_msgs::ModificationRequest::Request& req) : mod_req(req) 
 
 
 
-const std::vector<ramp_msgs::Path> Modifier::perform() 
-{
+const std::vector<ramp_msgs::Path> Modifier::perform() {
   std::vector<ramp_msgs::Path> result;
 
   /*ROS_INFO("Modifier received path: %s", u.toString(mod_req.paths[0]).c_str());
@@ -53,15 +52,15 @@ const std::vector<ramp_msgs::Path> Modifier::perform()
     result = cross_.perform();
   }
 
-  /*else if(mod_req.op == "move")
+  else if(mod_req.op == "move")
   {
-    repair_.path_ = mod_req.paths[0];
-    repair_.dir_  = mod_req.repair_dir;
-    repair_.dist_ = mod_req.repair_dist;
-    repair_.r_    = mod_req.repair_ob_r;
+    move_.path_ = mod_req.paths[0];
+    move_.dir_  = mod_req.move_dir;
+    move_.dist_ = mod_req.move_dist;
+    move_.r_    = mod_req.move_ob_r;
 
-    result.push_back(repair_.perform());
-  }*/
+    result.push_back(move_.perform());
+  }
 
   /*ROS_INFO("Modifier returning: %s", u.toString(result.at(0)).c_str());
   
