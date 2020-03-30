@@ -3,7 +3,8 @@ RAMP-RL
 
 This is a ROS metapackage that will implement the Real-time Adaptive Motion Planning (RAMP) algorithm with Reinforcement Learning (RL) to adjust the coefficients of evaluation functions in RAMP.
 
-1. Install TensorFlow: https://www.tensorflow.org/install/
+## Requirements 
+1. Tensorflow 2.1
 
 2. Install TensorLayer: https://tensorlayercn.readthedocs.io/zh/latest/user/installation.html
 
