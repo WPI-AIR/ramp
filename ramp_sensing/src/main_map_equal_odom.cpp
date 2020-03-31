@@ -2,8 +2,6 @@
 #include <tf/transform_broadcaster.h>
 #include <turtlesim/Pose.h>
 
-std::string turtle_name;
-
 /*
  * This node will publish a map frame that is equal to the odom frame
  * This is useful when we aren't using a map, but need to specify an initial pose
