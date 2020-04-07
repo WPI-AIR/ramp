@@ -14,9 +14,10 @@ This is a ROS metapackage that will implement the Real-time Adaptive Motion Plan
 
 Usage:
 
-1. roscore
+1. roslaunch ramp_launch gazebo_costmap_env.launch:
+    This command will open Gazebo, construct a simulation world
 
-2. roslaunch ramp_launch my_view_robot_costmap.launch:
+2. roslaunch ramp_launch ramp_turtlebot.launch:
     This command will open RViz for visualization
 
 3. roslaunch ramp_launch gazebo_costmap_tmp.launch:
