@@ -551,13 +551,15 @@ std::vector<Circle> CirclePacker::go()
 
   // Make object
   // Ptr line works with my work machine, but I get an error about the create(params) method on my laptop
-  //cv::Ptr<cv::SimpleBlobDetector> blobs_detector = cv::SimpleBlobDetector::create(params);   
-  cv::SimpleBlobDetector blobs_detector(params);   
+
+  cv::Ptr<cv::SimpleBlobDetector> blobs_detector = cv::SimpleBlobDetector::create(params); // for CV3     
+  // cv::SimpleBlobDetector blobs_detector(params); // for CV2   
 
   // Detect blobs
   std::vector<cv::KeyPoint> keypoints;
   ros::Time t_start = ros::Time::now();
-  blobs_detector.detect(src, keypoints);
+  // blobs_detector.detect(src, keypoints); // for CV2
+  blobs_detector->detect(src, keypoints); // for CV3 
   ros::Duration d_blobs = ros::Time::now() - t_start;
   ////////ROS_INFO("d_blobs: %f", d_blobs.toSec());
 
