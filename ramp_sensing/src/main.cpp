@@ -14,6 +14,7 @@
 #include "circle_filter.h"
 #include <visualization_msgs/MarkerArray.h>
 #include "utility.h"
+#include "obstacle.h"
 
 
 #include <bfl/filter/extendedkalmanfilter.h>
