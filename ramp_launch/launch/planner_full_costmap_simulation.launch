@@ -10,7 +10,10 @@
 
 <!-- START NODES -->
 <!-- Simulation and costmap should be started in separate file, e.g., gazebo_costmap.launch -->
-
+<!-- Start the costmap -->
+<node name="costmap_node" pkg="costmap_2d" type="costmap_2d_node" output="screen" >
+  <rosparam file="$(find ramp_launch)/launch/costmap_param/my_rolling_costmap.yaml" command="load" />
+</node>
 
 <!-- Start publishing the map->odom transform -->
 <node name="pub_map_equal_odom" pkg="ramp_planner" type="pub_map_odom" />
@@ -45,7 +48,7 @@
 <node name="process_hmap" pkg="ramp_sensing" type="process_hmap" output="screen" />
 
 <!-- Move obstacles -->
-<node name="move_obstacles" pkg="ramp_planner" type="move_gazebo_obs" output="log" />
+<!-- <node name="move_obstacles" pkg="ramp_planner" type="move_gazebo_obs" output="log" /> -->
 
 
 
