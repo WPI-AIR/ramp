@@ -11,7 +11,7 @@ ControlHandler::ControlHandler(const ros::NodeHandle& h) : handle_(h)
 
   // Set number of obstacles
   std::stringstream str;
-  for(uint8_t i=0;i<3;i++)
+  for(uint8_t i=0;i<10;i++)
   {
     ROS_INFO("Creating publisher for ob_IC");
     str<<"/obstacle_"<<(int)i<<"/ob_imminent_collision";
