@@ -12,7 +12,8 @@
 
 <!-- Start Gazebo simulation and missing tfs for the Turtlebot in Gazebo -->
 <include file="$(find ramp_launch)/launch/world_parallel.launch" if="$(eval world=='parallel')"> </include> 
-<include file="$(find ramp_launch)/launch/world_dynamic.launch" if="$(eval world=='dynamic')"> </include> 
+<include file="$(find ramp_launch)/launch/world_dynamic.launch" if="$(eval world=='dynamic')"> </include>
+<include file="$(find ramp_launch)/launch/world_actor.launch" if="$(eval world=='actor')"> </include> 
 
 <node name="pub_tf_missing_turtlebot_gazebo"  pkg="ramp_sensing" type="pub_tf_missing_turtlebot_gazebo" />
 
