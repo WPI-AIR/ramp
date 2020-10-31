@@ -26,12 +26,12 @@ Usage:
 <!--- 4. rosrun ramp_rlpara actual_env_simulation.py:
     This command will open ramp_planner and other necessary nodes. Until here, the whole simulation environment for a RL agent is ready and is waiting for the agent to take action. This file will also log data during the interaction between agent and the simulation environment, which may be used again to do learning (off-line, without simulation world or real world, the .bag files can be seen as environment). --->
    
-4. roslaunch ramp_rlpara dqn_ramp_si.launch:
+4. `roslaunch ramp_rlpara dqn_ramp_si.launch`
     This command will load the interface of environment (ramp_rlpara/ramp_gym/ramp_env_interfaces/*.py), construct a DQN agent (agent itself is implemented by keras-rl) and interact with the environment to do learning.
     
     You can also use other files including other agents:
     
-    - rosrun ramp_rlpara random_ramp.py (take random action, can be used to log data)
+    - `rosrun ramp_rlpara random_ramp.py` (take random action, can be used to log data)
 
-6. roslaunch trajectory_generator clean_log.launch:
+6. `roslaunch trajectory_generator clean_log.launch`
     Clean ~/.ros/log periodically for a long time learning.
