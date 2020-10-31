@@ -15,11 +15,11 @@ from keras.optimizers import Adam
 ramp_root = os.path.join(os.path.dirname(__file__), '../../')
 sys.path.append(ramp_root) # directory_name
 
-# from keras_rl.rl.agents.dqn_si import DQNAgentSi
-# from keras_rl.rl.policy import BoltzmannQPolicy
-# from keras_rl.rl.policy import GreedyQPolicy
-# from keras_rl.rl.policy import EpsGreedyQPolicy
-# from keras_rl.rl.memory import SequentialMemory
+from rl.agents.dqn_si import DQNAgentSi
+from rl.policy import BoltzmannQPolicy
+from rl.policy import GreedyQPolicy
+from rl.policy import EpsGreedyQPolicy
+from rl.memory import SequentialMemory
 
 from ramp_rlpara.ramp_gym.ramp_env_interfaces.ramp_env_interface_sip import RampEnvSip
 rospy.init_node('dqn_ramp_sip', anonymous=True)
