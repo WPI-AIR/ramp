@@ -1,3 +1,4 @@
+<?xml version="1.0" ?>
 <sdf version='1.4'>
   <world name='default'>
     <light name='sun' type='directional'>
@@ -193,7 +194,7 @@
       <elevation>0</elevation>
       <heading_deg>0</heading_deg>
     </spherical_coordinates>
-    <model name='mobile_base'>
+    <!-- <model name='mobile_base'>
       <link name='base_footprint'>
         <pose>0 0 0 0 -0 0</pose>
         <inertial>
@@ -1205,7 +1206,7 @@
         <robotNamespace>/</robotNamespace>
       </plugin>
       <pose>0 0 0 0 -0 0</pose>
-    </model>
+    </model> -->
     <model name='Construction Cone_1'>
       <link name='link'>
         <collision name='collision'>
