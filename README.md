@@ -13,15 +13,14 @@ This is a ROS metapackage that will implement the Real-time Adaptive Motion Plan
 
 Usage:
 
-1. roscore
+
+1. roslaunch ramp_launch gazebo_costmap_sipd.launch:
+    This command will open Gazebo, construct a simulation world
 
 2. roslaunch ramp_launch my_view_robot_costmap.launch:
     This command will open RViz for visualization
-
-3. roslaunch ramp_launch gazebo_costmap_tmp.launch:
-    This command will open Gazebo, construct a simulation world
     
-4. rosrun ramp_rlpara actual_env_simulation.py:
+4. rosrun ramp_rlpara actual_env_simulation_si.py:
     This command will open ramp_planner and other necessary nodes. Until here, the whole simulation environment for a RL agent is ready and is waiting for the agent to take action. This file will also log data during the interaction between agent and the simulation environment, which may be used again to do learning (off-line, without simulation world or real world, the .bag files can be seen as environment).
     
 5. roslaunch ramp_rlpara ddpg_ramp_si.launch:
