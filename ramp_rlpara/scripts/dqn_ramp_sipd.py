@@ -132,4 +132,4 @@ coarse_logger.close()
 # # Finally, evaluate our algorithm for 5 episodes.
 # dqn.testSip(env, nb_episodes=11, visualize=False, nb_max_episode_steps=3000)
 
-plt.show()
+#plt.show()
