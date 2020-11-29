@@ -147,18 +147,24 @@ class Utility(object):
 
 
     def antiNormalizeCoes(self, coes):
-        assert len(coes) == 3
+        assert len(coes) == 5
         
-        A = self.coe_A_range[0] + coes[0] * (self.coe_A_range[1] - self.coe_A_range[0]) # transfer into non-normalized value
-        A = np.clip(A, self.coe_A_range[0], self.coe_A_range[1]) # clip using non-normalized value
+        Ap = self.coe_Ap_range[0] + coes[0] * (self.coe_Ap_range[1] - self.coe_Ap_range[0]) # transfer into non-normalized value
+        Ap = np.clip(Ap, self.coe_Ap_range[0], self.coe_Ap_range[1]) # clip using non-normalized value
 
-        D = self.coe_D_range[0] + coes[1] * (self.coe_D_range[1] - self.coe_D_range[0])
-        D = np.clip(D, self.coe_D_range[0], self.coe_D_range[1])
+        Bp = self.coe_Bp_range[0] + coes[1] * (self.coe_Bp_range[1] - self.coe_Bp_range[0])
+        Bp = np.clip(Bp, self.coe_Bp_range[0], self.coe_Bp_range[1])
 
-        Qk = self.coe_Qk_range[0] + coes[2] * (self.coe_Qk_range[1] - self.coe_Qk_range[0])
-        Qk = np.clip(Qk, self.coe_Qk_range[0], self.coe_Qk_range[1])
+        dp = self.coe_dp_range[0] + coes[2] * (self.coe_dp_range[1] - self.coe_dp_range[0])
+        dp = np.clip(dp, self.coe_dp_range[0], self.coe_dp_range[1])
 
-        return np.array([A, D, Qk])
+        L = self.coe_L_range[0] + coes[3] * (self.coe_L_range[1] - self.coe_L_range[0])
+        L = np.clip(L, self.coe_L_range[0], self.coe_L_range[1])
+
+        k = self.coe_k_range[0] + coes[4] * (self.coe_k_range[1] - self.coe_k_range[0])
+        k = np.clip(k, self.coe_k_range[0], self.coe_k_range[1])
+
+        return np.array([A, D, dp, L, k])
 
 
 
