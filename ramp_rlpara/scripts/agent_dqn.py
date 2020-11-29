@@ -29,7 +29,7 @@ node_name = 'agent_q_net'
 
 def getTrajectoryLength(t):
 	traj_pts_num = len(t.trajectory.points)
-	traj_len = 0.0;
+	traj_len = 0.0
 	for i in range(traj_pts_num - 1):
 		x1 = t.trajectory.points[i].positions[0]
 		y1 = t.trajectory.points[i].positions[1]
