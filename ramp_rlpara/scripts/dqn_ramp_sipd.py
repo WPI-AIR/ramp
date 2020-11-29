@@ -127,7 +127,7 @@ dqn.fitSip(env, nb_steps=5000000, log_interval=log_interval,
 dqn.save_weights_sip(file_dir + 'dqn_{}_weights.h5f'.format(env.name), overwrite = True)
 coarse_logger.close()
 
-
+print("dqn weights saved")
 
 # # Finally, evaluate our algorithm for 5 episodes.
 # dqn.testSip(env, nb_episodes=11, visualize=False, nb_max_episode_steps=3000)
