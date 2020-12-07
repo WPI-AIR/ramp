@@ -8,3 +8,4 @@ trajectory_generator/durations.txt
 trajectory_evaluation/durations.txt
 ramp_sensing/durations.txt
 path_modification/durations.txt
+laser_filters/*
