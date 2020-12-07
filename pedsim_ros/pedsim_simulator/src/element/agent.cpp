@@ -40,6 +40,7 @@
 Agent::Agent() {
   // initialize
   Ped::Tagent::setType(Ped::Tagent::ADULT);
+  Ped::Tagent::setVmax(1.1);
   Ped::Tagent::setForceFactorObstacle(CONFIG.forceObstacle);
   forceSigmaObstacle = CONFIG.sigmaObstacle;
   Ped::Tagent::setForceFactorSocial(CONFIG.forceSocial);
