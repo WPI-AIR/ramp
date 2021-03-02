@@ -28,7 +28,6 @@ def actor_poses_callback(actors):
                                     actor_pose.orientation.z,
                                     actor_pose.orientation.w) )
 
-        print("Spawning model !!! ")
         spawn_model(actor_id, xml_string, "", model_pose, "world")
     rospy.signal_shutdown("all agents have been spawned !")
 

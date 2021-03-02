@@ -1,5 +1,5 @@
 # RAMP misc parameters #
-population_size: 5
+population_size: 10
 
 sub_populations: false
 
@@ -35,7 +35,7 @@ stop_after_ppcs: false
 
 field_of_view_angle: 1.25
 
-remove_outside_fov: false
+remove_outside_fov: true
 
 use_persistent_grid: false
 

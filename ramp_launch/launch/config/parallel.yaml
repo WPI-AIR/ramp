@@ -1,0 +1,29 @@
+id: 0
+
+
+# Turtlebot radius ~ 0.2
+# Cooky radius ~ 0.6
+radius: 0.2
+
+# Setting the Ranges in the planner code will consider the radius 
+# DOF must consider robot base dimensions if the environment is surrounded by walls
+# Cooky demo hallway is [10, 2.5]
+
+# Units are m/s
+max_speed_linear: 0.25
+max_speed_angular: 1.5708
+
+# relative to map
+# DOF_min: [0, 0,  -3.14159]
+# DOF_max: [5, 5,  3.14159]
+
+# start: [0.0, 0.0, 0]
+# goal:  [5, 5, 0]
+
+
+# Dynamic World
+DOF_min: [0, 0,  -3.14159]
+DOF_max: [5, 12,  3.14159]
+
+start: [0.0, 0.0, 0]
+goal:  [2, 10, 0]
