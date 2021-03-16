@@ -19,6 +19,7 @@ from ramp_msgs.msg import RampObservationOneRunning
 import math
 from colorama import init as clr_ama_init
 from colorama import Fore
+import itertools
 clr_ama_init(autoreset = True)
 
 ## get directory
@@ -84,7 +85,7 @@ class RampEnvSipd(gym.Env):
         #self.preset_A = 0.05
         #self.preset_D = 0.65
         
-        self.action_space = spaces.Discrete(81) #243
+        self.action_space = spaces.Discrete(243) #81
         #self.observation_space = spaces.Box(np.array([self.utility.min_x, self.utility.min_y, self.a0, self.b0, self.d0. self.l0, self.k0]),
         #                                    np.array([self.utility.max_x, self.utility.max_y, self.a1, self.b1, self.d1. self.l1, self.k1])) # single motion state
         
@@ -100,7 +101,7 @@ class RampEnvSipd(gym.Env):
         self.one_exe_info_sub = rospy.Subscriber("ramp_collection_ramp_ob_one_run", RampObservationOneRunning,
                                                  self.oneExeInfoCallback)
 
-        self.setState(1.0, 0.45, 0.80, 0.50, 0.50)
+        self.setState(1.0, 0.45, 0.80, 0.50, 0.50) # TODO: check state values (hyperparam?)
 
 
 
@@ -200,20 +201,7 @@ class RampEnvSipd(gym.Env):
         ------
             (float): Delta A, D weight.
         """
-        n = 5
-        action_matrix = np.zeros(n)
-        action_space_matrix.append(action_matrix)
-        while action_matrix[n-4] < 3:
-            action_matrix[n-4] +=1
-            while action_matrix[n-3] < 3:
-                action_matrix[n-3] +=1
-                while action_matrix[n-3] < 3:
-                    action_matrix[n-2] +=1
-                    while action_matrix[n-1] < 3:
-                        action_matrix[n-1] +=1
-                        while action_matrix[n] < 3:
-                            action_matrix[n] +=1
-                            action_space_matrix.append(action_matrix)
+        action_space_matrix = list(set(itertools.permutations([0,0,0,0,0,1,1,1,1,1,2,2,2,2,2], 5)))
 
         dAp = action_space_matrix[action][0]
         dBp = action_space_matrix[action][1]
