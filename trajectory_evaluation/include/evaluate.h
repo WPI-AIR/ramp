@@ -1,10 +1,12 @@
 #ifndef EVALUATE_H
 #define EVALUATE_H
+#include "ros/ros.h"
 #include "ramp_msgs/EvaluationSrv.h"
 #include "euclidean_distance.h"
 #include "orientation.h"
 #include "collision_detection.h"
 #include "utility.h"
+#include "ramp_msgs/PedSim.h"
 
 
 
@@ -16,11 +18,13 @@ class Evaluate {
     void perform(ramp_msgs::EvaluationRequest& req, ramp_msgs::EvaluationResponse& res);
     void performFeasibility(ramp_msgs::EvaluationRequest& er);
     void performFitness(ramp_msgs::RampTrajectory& trj, const double& offset, double& result, double& min_obs_dis, ramp_msgs::EvaluationResponse& res);
+    void pedsimParams(const ramp_msgs::PedSim& msg);
 
     /** Different evaluation criteria */
     EuclideanDistance eucDist_;
     Orientation orientation_;
 
+    ros::NodeHandle& handle;
     ramp_msgs::EvaluationResponse res_;
     
     CollisionDetection cd_;
@@ -46,13 +50,40 @@ class Evaluate {
     double coll_time_norm_;
     double _1_coll_time_norm_;
 
+    double Ap_norm_;
+    double Bp_norm_;
+    double dp_norm_;
+    double L_norm_;
+    double k_norm_;
+
+    double Ap;
+    double Bp;
+    double dp;
+    double L;
+    double k;
+    double rp;
+    double np;
+
     double last_T_weight_;
     double last_A_weight_;
     double last_D_weight_;
 
+    double last_Ap_weight_;
+    double last_Bp_weight_;
+    double last_dp_weight_;
+    double last_L_weight_;
+    double last_k_weight_;
+
     double T_weight_;
     double A_weight_;
     double D_weight_;
+
+    double Ap_weight_;
+    double Bp_weight_;
+    double dp_weight_;
+    double L_weight_;
+    double k_weight_;
+
 
     double max_speed_linear;
     double max_speed_angular;

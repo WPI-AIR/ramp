@@ -1,0 +1,31 @@
+{
+    "configurations": [
+        {
+            "browse": {
+                "databaseFilename": "",
+                "limitSymbolsToIncludedHeaders": true
+            },
+            "includePath": [
+                "/home/airlab/catkin_ws/devel_isolated/ramp_msgs/include/**",
+                "/opt/ros/kinetic/include/**",
+                "/home/airlab/catkin_ws/src/ramp/laser_filters/include/**",
+                "/home/airlab/catkin_ws/src/ramp/path_modification/include/**",
+                "/home/airlab/catkin_ws/src/ramp/ramp_control/include/**",
+                "/home/airlab/catkin_ws/src/ramp/ramp_debug/include/**",
+                "/home/airlab/catkin_ws/src/ramp/ramp_planner/include/**",
+                "/home/airlab/catkin_ws/src/ramp/ramp_rlpara/include/**",
+                "/home/airlab/catkin_ws/src/ramp/ramp_sensing/include/**",
+                "/home/airlab/catkin_ws/src/ramp/trajectory_evaluation/include/**",
+                "/home/airlab/catkin_ws/src/ramp/trajectory_generator/include/**",
+                "/home/airlab/catkin_ws/src/ramp/trajectory_visualisation/include/**",
+                "/usr/include/**"
+            ],
+            "name": "ROS",
+            "intelliSenseMode": "gcc-x64",
+            "compilerPath": "/usr/bin/gcc",
+            "cStandard": "gnu11",
+            "cppStandard": "c++17"
+        }
+    ],
+    "version": 4
+}

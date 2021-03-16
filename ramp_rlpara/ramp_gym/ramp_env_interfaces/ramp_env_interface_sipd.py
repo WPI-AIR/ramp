@@ -84,7 +84,7 @@ class RampEnvSipd(gym.Env):
         #self.preset_A = 0.05
         #self.preset_D = 0.65
         
-        self.action_space = spaces.Discrete(81)
+        self.action_space = spaces.Discrete(81) #243
         #self.observation_space = spaces.Box(np.array([self.utility.min_x, self.utility.min_y, self.a0, self.b0, self.d0. self.l0, self.k0]),
         #                                    np.array([self.utility.max_x, self.utility.max_y, self.a1, self.b1, self.d1. self.l1, self.k1])) # single motion state
         
@@ -200,61 +200,26 @@ class RampEnvSipd(gym.Env):
         ------
             (float): Delta A, D weight.
         """
-        #TODO: fill all actions states
-        if action == 0:
-            dAp = 0
-            dBp = 0
-            ddp = 0
-            dL = 0
-            dk = 0
-        elif action == 1:
-            dAp = 0
-            dBp = 0
-            ddp = 0
-            dL = 0
-            dk = 1
-        elif action == 2:
-            dAp = 0
-            dBp = 0
-            ddp = 0
-            dL = 0
-            dk = 2
-        elif action == 3:
-            dAp = 0
-            dBp = 0
-            ddp = 0
-            dL = 0
-            dk = 0
-        elif action == 4:
-            dAp = 0
-            dBp = 0
-            ddp = 0
-            dL = 0
-            dk = 1
-        elif action == 5:
-            dAp = 0
-            dBp = 0
-            ddp = 0
-            dL = 0
-            dk = 2
-        elif action == 6:
-            dAp = 0
-            dBp = 0
-            ddp = 0
-            dL = 0
-            dk = 0
-        elif action == 7:
-            dAp = 0
-            dBp = 0
-            ddp = 0
-            dL = 0
-            dk = 1
-        elif action == 8:
-            dAp = 0
-            dBp = 0
-            ddp = 0
-            dL = 0
-            dk = 2
+        n = 5
+        action_matrix = np.zeros(n)
+        action_space_matrix.append(action_matrix)
+        while action_matrix[n-4] < 3:
+            action_matrix[n-4] +=1
+            while action_matrix[n-3] < 3:
+                action_matrix[n-3] +=1
+                while action_matrix[n-3] < 3:
+                    action_matrix[n-2] +=1
+                    while action_matrix[n-1] < 3:
+                        action_matrix[n-1] +=1
+                        while action_matrix[n] < 3:
+                            action_matrix[n] +=1
+                            action_space_matrix.append(action_matrix)
+
+        dAp = action_space_matrix[action][0]
+        dBp = action_space_matrix[action][1]
+        ddp = action_space_matrix[action][2]
+        dL = action_space_matrix[action][3]
+        dk = action_space_matrix[action][4]
 
         dAp = (dAp - 1) * self.action_resolution
         dBp = (dBp - 1) * self.action_resolution
@@ -268,7 +233,7 @@ class RampEnvSipd(gym.Env):
 
     def step(self, action):
         print('################################################################')
-        dA, dD = self.decodeAction(action)
+        dAp, dBp, ddp, dL, dk = self.decodeAction(action)
 
         ## set the coefficients of RAMP
         Ap = rospy.get_param('/ramp/eval_weight_Ap')
