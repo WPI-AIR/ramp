@@ -72,6 +72,26 @@ class RampEnvSipd(gym.Env):
         self.l1 = 1.0
         self.k0 = 0.0
         self.k1 = 1.0
+        t0 = 0.0
+        t1 = self.utility.time_stamp_max
+        x0 = self.utility.min_x
+        x1 = self.utility.max_x
+        y0 = self.utility.min_y
+        y1 = self.utility.max_y
+        theta0 = self.utility.min_theta
+        theta1 = self.utility.max_theta
+        x_d0 = -self.utility.max_linear_v
+        x_d1 =  self.utility.max_linear_v
+        y_d0 = -self.utility.max_linear_v
+        y_d1 =  self.utility.max_linear_v
+        theta_d0 = -self.utility.max_angular_v
+        theta_d1 =  self.utility.max_angular_v
+        x_dd0 = -self.utility.max_linear_a
+        x_dd1 =  self.utility.max_linear_a
+        y_dd0 = -self.utility.max_linear_a
+        y_dd1 =  self.utility.max_linear_a
+        theta_dd0 = -self.utility.max_angular_a
+        theta_dd1 =  self.utility.max_angular_a
         #self.best_A = 0.10
         #self.best_D = 0.15
 
@@ -89,8 +109,8 @@ class RampEnvSipd(gym.Env):
         #self.observation_space = spaces.Box(np.array([self.utility.min_x, self.utility.min_y, self.a0, self.b0, self.d0. self.l0, self.k0]),
         #                                    np.array([self.utility.max_x, self.utility.max_y, self.a1, self.b1, self.d1. self.l1, self.k1])) # single motion state
         
-        self.observation_space = spaces.Box(np.array([self.utility.min_x, self.utility.min_y, self.a0, self.b0, self.d0, self.l0, self.k0]),
-                                            np.array([self.utility.max_x, self.utility.max_y, self.a1, self.b1, self.d1, self.l1, self.k1])) # single motion state
+        self.observation_space = spaces.Box(np.array([x0, y0]),
+                                            np.array([x1, y1]))
         self.best_traj = None
         self.best_t = None
         self.this_exe_info = None
@@ -137,7 +157,7 @@ class RampEnvSipd(gym.Env):
 
             cur_time = rospy.get_rostime()
             has_waited_for = cur_time.to_sec() - start_waiting_time.to_sec()
-            if has_waited_for >= 20.0: # overtime
+            if has_waited_for >= 1000.0: # overtime
                 print("Long time no response!")
                 print("Wait environment get ready......")
 
@@ -229,7 +249,7 @@ class RampEnvSipd(gym.Env):
         dp = rospy.get_param('/ramp/eval_weight_dp')
         L = rospy.get_param('/ramp/eval_weight_L')
         k = rospy.get_param('/ramp/eval_weight_k')
-        self.setState(Ap+dAp, Dp+dDp, dp+ddp, L+dL, k+dk)
+        self.setState(Ap+dAp, Bp+dBp, dp+ddp, L+dL, k+dk)
 
         self.oneCycle(start_planner=self.start_in_step)
         # Reward are for the whole path and its coefficients.
@@ -292,23 +312,26 @@ class RampEnvSipd(gym.Env):
 
 
     def getOb(self):
-        Ap = rospy.get_param('/ramp/eval_weight_Ap')
-        Bp = rospy.get_param('/ramp/eval_weight_Bp')
-        dp = rospy.get_param('/ramp/eval_weight_dp')
-        L = rospy.get_param('/ramp/eval_weight_L')
-        k = rospy.get_param('/ramp/eval_weight_k')
+        # Ap = rospy.get_param('/ramp/eval_weight_Ap')
+        # Bp = rospy.get_param('/ramp/eval_weight_Bp')
+        # dp = rospy.get_param('/ramp/eval_weight_dp')
+        # L = rospy.get_param('/ramp/eval_weight_L')
+        # k = rospy.get_param('/ramp/eval_weight_k')
 
         if self.best_t is None or len(self.best_t.holonomic_path.points) < 2:
-            return np.array([[0.0, 0.0, Ap, Bp, dp, L, k]])
+            # return np.array([[0.0, 0.0, Ap, Bp, dp, L, k]])
+            return np.array([[0.0, 0.0]])
 
         x1 = self.best_t.holonomic_path.points[1].motionState.positions[0]
         y1 = self.best_t.holonomic_path.points[1].motionState.positions[1]
-        ob = np.array([[x1, y1, Ap, Bp, dp, L, k]])
+        # ob = np.array([[x1, y1, Ap, Bp, dp, L, k]])
+        ob = np.array([[x1, y1]])
         length = len(self.best_t.holonomic_path.points)
         for i in range(2, length):
             xi = self.best_t.holonomic_path.points[i].motionState.positions[0]
             yi = self.best_t.holonomic_path.points[i].motionState.positions[1]
-            ob = np.concatenate((ob, [[xi, yi, Ap, Bp, dp, L, k]]))
+            # ob = np.concatenate((ob, [[xi, yi, Ap, Bp, dp, L, k]]))
+            ob = np.concatenate((ob, [[xi, yi]]))
 
         return ob
 
