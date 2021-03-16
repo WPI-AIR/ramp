@@ -14,7 +14,7 @@
     <arg name="kbd_teleop" value="$(arg kbd_teleop)"/>
     <arg name="rqt_teleop" value="$(arg rqt_teleop)"/>
 
-    <arg name="scene_file" value="$(find pedsim_simulator)scenarios/scene_1.xml" if="$(eval scene=='scene_1')"/>
+    <arg name="scene_file" value="$(find pedsim_simulator)scenarios/cross.xml" if="$(eval scene=='scene_1')"/>
     <arg name="scene_file" value="$(find pedsim_simulator)scenarios/parallel.xml" if="$(eval scene=='parallel')"/>
     <arg name="with_robot" value="$(arg with_robot)"/>
     <arg name="simulation_factor" value="$(arg simulation_factor)"/>
