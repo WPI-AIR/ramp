@@ -24,7 +24,7 @@ class Evaluate {
     EuclideanDistance eucDist_;
     Orientation orientation_;
 
-    ros::NodeHandle& handle;
+    //ros::NodeHandle& handle; // add pedsim node
     ramp_msgs::EvaluationResponse res_;
     
     CollisionDetection cd_;
