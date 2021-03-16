@@ -7,8 +7,8 @@ radius: 0.15
 # Setting the Ranges in the planner code will consider the radius 
 # DOF must consider robot base dimensions if the environment is surrounded by walls
 # Cooky demo hallway is [10, 2.5]
-DOF_min: [0,    0,  -3.14159]
-DOF_max: [6.0,    6.0,  3.14159]
+# DOF_min: [0,    0,  -3.14159]
+# DOF_max: [6.0,    6.0,  3.14159]
 
 # Units are m/s and rad/s
 max_speed_linear: 0.2
@@ -20,4 +20,4 @@ max_acceleration_angular: 0.5
 
 # relative to map
 start: [0, 0, 0.785]
-goal:  [6.0, 6.0, 0.785]
+# goal:  [6.0, 6.0, 0.785]
