@@ -229,7 +229,7 @@ class RampEnvSipd(gym.Env):
         dp = rospy.get_param('/ramp/eval_weight_dp')
         L = rospy.get_param('/ramp/eval_weight_L')
         k = rospy.get_param('/ramp/eval_weight_k')
-        self.setState(Ap+dAp, Dp+dDp, dp+ddp, L+dL, k+dk)
+        self.setState(Ap+dAp, Bp+dBp, dp+ddp, L+dL, k+dk)
 
         self.oneCycle(start_planner=self.start_in_step)
         # Reward are for the whole path and its coefficients.
