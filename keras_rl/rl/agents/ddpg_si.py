@@ -6,7 +6,7 @@ import numpy as np
 ramp_root = os.path.join(os.path.dirname(__file__), '../../../')
 sys.path.append(ramp_root) # directory_name
 
-from keras_rl.rl.agents.ddpg import DDPGAgent
+from rl.agents.ddpg import DDPGAgent
 
 class DDPGAgentSi(DDPGAgent):
     """Write me

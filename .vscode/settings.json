@@ -12,5 +12,18 @@
         "slist": "cpp",
         "functional": "cpp"
     },
-    "python.linting.enabled": false
+    "python.linting.enabled": false,
+    "python.autoComplete.extraPaths": [
+        "/home/airlab/catkin_ws/devel_isolated/spencer_vision_msgs/lib/python2.7/dist-packages",
+        "/home/airlab/catkin_ws/devel_isolated/spencer_tracking_msgs/lib/python2.7/dist-packages",
+        "/home/airlab/catkin_ws/devel_isolated/spencer_social_relation_msgs/lib/python2.7/dist-packages",
+        "/home/airlab/catkin_ws/devel_isolated/spencer_human_attribute_msgs/lib/python2.7/dist-packages",
+        "/home/airlab/catkin_ws/devel_isolated/pedsim_visualizer/lib/python2.7/dist-packages",
+        "/home/airlab/catkin_ws/devel_isolated/pedsim_simulator/lib/python2.7/dist-packages",
+        "/home/airlab/catkin_ws/devel_isolated/pedsim_srvs/lib/python2.7/dist-packages",
+        "/home/airlab/catkin_ws/devel_isolated/pedsim_msgs/lib/python2.7/dist-packages",
+        "/home/airlab/catkin_ws/devel_isolated/ramp_msgs/lib/python2.7/dist-packages",
+        "/opt/ros/kinetic/lib/python2.7/dist-packages",
+        "~/catkin_ws/src/ramp/keras_rl/dist/keras_rl-0.4.0-py2.7.egg"
+    ]
 }

@@ -45,10 +45,10 @@ get_custom_objects().update({'custom_actor_activation': Activation(custom_actor_
 ramp_root = os.path.join(os.path.dirname(__file__), '../../')
 sys.path.append(ramp_root) # directory_name
 
-from keras_rl.rl.memory import SequentialMemory
-from keras_rl.rl.random import OrnsteinUhlenbeckProcess
-from keras_rl.rl.agents.ddpg import DDPGAgent
-from keras_rl.rl.agents.ddpg_si import DDPGAgentSi
+from rl.memory import SequentialMemory
+from rl.random import OrnsteinUhlenbeckProcess
+from rl.agents.ddpg import DDPGAgent
+from rl.agents.ddpg_si import DDPGAgentSi
 
 ## make directory of logging
 home_dir = os.getenv("HOME")
