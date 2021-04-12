@@ -11,6 +11,8 @@ import datetime
 from keras.models import Sequential
 from keras.layers import Dense, Activation, Flatten
 from keras.optimizers import Adam
+# import tensorflow as tf
+# tf.compat.v1.disable_eager_execution()
 
 ramp_root = os.path.join(os.path.dirname(__file__), '../../')
 sys.path.append(ramp_root) # directory_name
