@@ -9,15 +9,24 @@ from gym.spaces import prng
 import datetime
 import matplotlib.pyplot as plt
 
+import tensorflow as tf
+from tensorflow import keras
+
+
 from keras.models import Sequential
-from keras.layers import Dense, Activation, Flatten
+from keras.layers import Dense, Activation, Flatten, LSTM
 from keras.optimizers import Adam
+from keras import backend as K
+
+tf.compat.v1.enable_eager_execution()
+#tf.framework.ops.disable_eager_mode
+
 
 ramp_root = os.path.join(os.path.dirname(__file__), '../../')
 sys.path.append(ramp_root) # directory_name
 
-import sys
-sys.path.append("~/catkin_ws/src/ramp/keras_rl/dist/keras_rl-0.4.0-py2.7.egg")
+#import sys
+#sys.path.append("~/catkin_ws/src/ramp/keras_rl/dist/keras_rl-0.4.0-py2.7.egg")
 # import rl
 
 from rl.agents.dqn_si import DQNAgentSi
@@ -50,7 +59,8 @@ epi_logger = RampRlLogger(file_dir + "dqn_epi_sipd.csv",
 
 
 # Seed
-seed_str = input("Enter a seed for random generator (must be a integer): ")
+#seed_str = input("Enter a seed for random generator (must be a integer): ")
+seed_str = 3
 seed_int = int(seed_str)
 np.random.seed(seed_int) # numpy
 prng.seed(seed_int) # space
@@ -78,16 +88,19 @@ nb_actions = env.action_space.n
 
 # Next, we build a very simple model Q(s,a).
 model = Sequential()
-model.add(Flatten(input_shape=(1,) + env.observation_space.shape)) # s is (x, y, coe)
-model.add(Dense(16))
+model.add(LSTM(16, input_shape=(1,7)))
+#model.add(Flatten(input_shape=(1,) + env.observation_space.shape)) # s is (x, y, coe)
+model.add(Dense(24))
 model.add(Activation('relu'))
-model.add(Dense(16))
+model.add(Dense(24))
 model.add(Activation('relu'))
-model.add(Dense(16))
+model.add(Dense(24))
 model.add(Activation('relu'))
 model.add(Dense(nb_actions)) # Q values, number is nb_actions
 model.add(Activation('linear'))
-print(model.summary())
+model.compile(loss='mean_squared_error', #Loss function: Mean Squared Error
+                      optimizer=keras.optimizers.Adam(lr=1e-3)) #Optimaizer: Adam (Feel free to check other options)
+#print(model.summary())
 
 
 
@@ -129,6 +142,6 @@ coarse_logger.close()
 print("dqn weights saved")
 
 # # Finally, evaluate our algorithm for 5 episodes.
-dqn.testSip(env, nb_episodes=11, visualize=False, nb_max_episode_steps=3000)
+dqn.testSip(env, nb_episodes=5, visualize=False, nb_max_episode_steps=3000)
 
 plt.show()
