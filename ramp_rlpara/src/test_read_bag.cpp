@@ -9,7 +9,7 @@
 
 int main() {
 	rosbag::Bag bag;
-	bag.open("/home/kai/data/test/test_read.bag", rosbag::bagmode::Read);
+	bag.open("/home/sapanostic/data/test/test_read.bag", rosbag::bagmode::Read);
 
 	std::vector<std::string> topics;
 	topics.push_back(std::string("/bestTrajec"));

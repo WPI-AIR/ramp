@@ -2,7 +2,7 @@
 
 import rosbag
 
-bag = rosbag.Bag('/home/kai/data/test/test_read_BZ2.bag')
+bag = rosbag.Bag('/home/sapanostic/data/test/test_read_BZ2.bag')
 cnt = 0
 for topic, msg, t in bag.read_messages(topics=['/bestTrajec']):
     cnt += 1
