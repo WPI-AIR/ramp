@@ -16,11 +16,11 @@ from keras.optimizers import Adam
 ramp_root = os.path.join(os.path.dirname(__file__), '../../')
 sys.path.append(ramp_root) # directory_name
 
-from keras_rl.rl.agents.dqn_si import DQNAgentSi
-from keras_rl.rl.policy import BoltzmannQPolicy
-from keras_rl.rl.policy import GreedyQPolicy
-from keras_rl.rl.policy import EpsGreedyQPolicy
-from keras_rl.rl.memory import SequentialMemory
+from rl.agents.dqn_si import DQNAgentSi
+from rl.policy import BoltzmannQPolicy
+from rl.policy import GreedyQPolicy
+from rl.policy import EpsGreedyQPolicy
+from rl.memory import SequentialMemory
 
 from ramp_rlpara.ramp_gym.ramp_env_interfaces.ramp_env_interface_sipd import RampEnvSipd
 rospy.init_node('dqn_ramp_sipd', anonymous=True)
@@ -102,8 +102,8 @@ dqn.compile(Adam(lr=1e-3), metrics=['mae'])
 
 
 # Load weights if needed. Put this after compiling may be better.
-dqn.load_weights_sip("/home/kai/data/ramp/ramp_rlpara/dqn_ramp_sipd/2018-02-17_14:05:42/raw_data/58/" +
-                     "dqn_{}_weights.h5f".format(env.name))
+# dqn.load_weights_sip("/home/kai/data/ramp/ramp_rlpara/dqn_ramp_sipd/2018-02-17_14:05:42/raw_data/58/" +
+#                      "dqn_{}_weights.h5f".format(env.name))
 
 
 
