@@ -10,7 +10,7 @@ import datetime
 import matplotlib.pyplot as plt
 
 from keras.models import Sequential
-from keras.layers import Dense, Activation, Flatten
+from keras.layers import Dense, Activation, Flatten, LSTM
 from keras.optimizers import Adam
 
 ramp_root = os.path.join(os.path.dirname(__file__), '../../')
@@ -78,7 +78,8 @@ nb_actions = env.action_space.n
 
 # Next, we build a very simple model Q(s,a).
 model = Sequential()
-model.add(Flatten(input_shape=(1,) + env.observation_space.shape)) # s is (x, y, coe)
+model.add(LSTM(16, input_shape=(1,4)))
+# model.add(Flatten(input_shape=(1,) + env.observation_space.shape)) # s is (x, y, coe)
 model.add(Dense(16))
 model.add(Activation('relu'))
 model.add(Dense(16))
