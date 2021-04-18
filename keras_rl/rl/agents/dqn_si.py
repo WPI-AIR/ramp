@@ -10,8 +10,8 @@ from keras.callbacks import History
 ramp_root = os.path.join(os.path.dirname(__file__), '../../../')
 sys.path.append(ramp_root) # directory_name
 
-from keras_rl.rl.agents.dqn import DQNAgent
-from keras_rl.rl.callbacks import TestLogger, TrainEpisodeLoggerSip, TrainIntervalLogger, Visualizer, CallbackList
+from rl.agents.dqn import DQNAgent
+from rl.callbacks import TestLogger, TrainEpisodeLoggerSip, TrainIntervalLogger, Visualizer, CallbackList
 
 from colorama import init as clr_ama_init
 from colorama import Fore
