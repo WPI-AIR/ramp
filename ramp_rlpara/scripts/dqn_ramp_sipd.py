@@ -16,6 +16,10 @@ from keras.optimizers import Adam
 ramp_root = os.path.join(os.path.dirname(__file__), '../../')
 sys.path.append(ramp_root) # directory_name
 
+import sys
+sys.path.append("~/catkin_ws/src/ramp/keras_rl/dist/keras_rl-0.4.0-py2.7.egg")
+# import rl
+
 from rl.agents.dqn_si import DQNAgentSi
 from rl.policy import BoltzmannQPolicy
 from rl.policy import GreedyQPolicy
@@ -102,7 +106,7 @@ dqn.compile(Adam(lr=1e-3), metrics=['mae'])
 
 
 # Load weights if needed. Put this after compiling may be better.
-# dqn.load_weights_sip("/home/kai/data/ramp/ramp_rlpara/dqn_ramp_sipd/2018-02-17_14:05:42/raw_data/58/" +
+# dqn.load_weights_sip("~/catkin_ws/data/ramp/ramp_rlpara/dqn_ramp_sipd/2018-02-17_14:05:42/raw_data/58/" +
 #                      "dqn_{}_weights.h5f".format(env.name))
 
 
