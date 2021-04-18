@@ -98,8 +98,6 @@ model.add(Dense(24))
 model.add(Activation('relu'))
 model.add(Dense(nb_actions)) # Q values, number is nb_actions
 model.add(Activation('linear'))
-model.compile(loss='mean_squared_error', #Loss function: Mean Squared Error
-                      optimizer=keras.optimizers.Adam(lr=1e-3)) #Optimaizer: Adam (Feel free to check other options)
 #print(model.summary())
 
 
