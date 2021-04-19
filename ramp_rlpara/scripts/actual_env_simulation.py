@@ -47,7 +47,7 @@ while True: # TODO: enable key interrupt or some other
     os.system('roslaunch ramp_launch planner_full_costmap_simulation_qn.launch')
 
     ## kiil (interrupt) the child rosbag process here
-    rosbag_proc_name = "/opt/ros/indigo/lib/rosbag/record"
+    rosbag_proc_name = "/opt/ros/kinetic/lib/rosbag/record"
     try:
         pids = check_output(["pidof", rosbag_proc_name])
     except subprocess.CalledProcessError:
