@@ -84,8 +84,8 @@ class Utility(object):
         self.min_linear_ay = rospy.get_param('/robot_info/max_acceleration_linear', -10.0)
         self.min_angular_a = rospy.get_param('/robot_info/max_acceleration_angular', -1.5708)
 
-        min_time = -1.0
-        max_time = 1000.0
+        self.min_time = -1.0
+        self.max_time = 1000.0
 
     def normalizeMotionState(self, s): # s is a np.array whose shape is (10,)
         assert len(s) == 10
