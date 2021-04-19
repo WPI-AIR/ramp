@@ -1,20 +1,39 @@
 #include "evaluate.h"
-
+#include <iostream>
+#include <math.h>
 Evaluate::Evaluate() : orientation_infeasible_(0), T_norm_(50.0), A_norm_(PI), _1_D_norm_(1.0), coll_time_norm_(zero),
                        last_T_weight_(-1.0), last_A_weight_(-1.0), last_D_weight_(-1.0), last_Q_coll_(-1.0), last_Q_kine_(-1.0), 
                        Ap(1.0), Bp(1.0), dp(1.0), L(1.0), rp(1.0), np(1.0) {}
 
-void Evaluate::pedsimParams(const ramp_msgs::PedSim& msg){
-  ROS_INFO("Extracting PedSim Data");
-  ramp_msgs::PedSim data;
-  //Ap = data->;
-  //Bp = data->;
+// void Evaluate::pedsimParams(const ramp_msgs::PedSim& msg){
+//   ROS_INFO("Extracting PedSim Data");
+//   ros::Subscriber pedestrian_sub = 
+//   ramp_msgs::PedSim data;
+  
+  // Ap = data->;
+  // Bp = data->;
   //dp = data->;
-  //L = data->;
+  // L = data->;
   //k = data->;
   //rp = data->;
   //np = data->;
 
+// }
+
+void Evaluate::set_ped_pose(geometry_msgs::Pose& pose_){
+  ped_pose = pose_;
+  // std::cout<< pose_.position.x << std::endl;
+}
+
+void Evaluate::set_robot_pose(geometry_msgs::Pose& pose_){
+  robot_pose = pose_;
+  // std::cout<< pose_.position.x << std::endl;
+}
+
+float Evaluate::get_dp(){
+  return sqrt(pow((robot_pose.position.x - ped_pose.position.x), 2) +
+                       pow((robot_pose.position.y - ped_pose.position.y), 2));
+  // std::cout<< dp << std::endl;
 }
 
 void Evaluate::perform(ramp_msgs::EvaluationRequest& req, ramp_msgs::EvaluationResponse& res)
@@ -337,6 +356,10 @@ void Evaluate::performFitness(ramp_msgs::RampTrajectory& trj, const double& offs
     double fgoal = zero;
     // Compute overall cost
     double cost = zero;
+
+    // Get Euclidean distance of the ped from the robot
+    float dp = get_dp();
+    
     double omega = L + (1-L)*(1 - np/2);
     fgoal += k_weight_ * k ; //TODO: Add velocity term
     F += Ap_weight_*exp((rp- (dp_weight_* dp))/(Bp_weight_* Bp)) * omega *(-np);

@@ -7,6 +7,8 @@
 #include "collision_detection.h"
 #include "utility.h"
 #include "ramp_msgs/PedSim.h"
+#include "nav_msgs/Odometry.h"
+#include "geometry_msgs/Pose.h"
 
 
 
@@ -14,11 +16,18 @@
 class Evaluate {
   public:
     Evaluate();
+    void set_ped_pose(geometry_msgs::Pose& pose_);
+    void set_robot_pose(geometry_msgs::Pose& pose_);
 
     void perform(ramp_msgs::EvaluationRequest& req, ramp_msgs::EvaluationResponse& res);
     void performFeasibility(ramp_msgs::EvaluationRequest& er);
     void performFitness(ramp_msgs::RampTrajectory& trj, const double& offset, double& result, double& min_obs_dis, ramp_msgs::EvaluationResponse& res);
+    
     void pedsimParams(const ramp_msgs::PedSim& msg);
+    float get_dp();
+
+    geometry_msgs::Pose robot_pose;
+    geometry_msgs::Pose ped_pose;
 
     /** Different evaluation criteria */
     EuclideanDistance eucDist_;
