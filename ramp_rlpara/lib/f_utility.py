@@ -65,14 +65,27 @@ class Utility(object):
         self.max_theta = dof_max[2]
 
         ## maximal velocity, linear and angular, both absolute
-        self.max_linear_v = rospy.get_param('/robot_info/max_speed_linear', 0.33)
+        self.max_linear_vx = rospy.get_param('/robot_info/max_speed_linear', 10.0)
+        self.max_linear_vy = rospy.get_param('/robot_info/max_speed_linear', 10.0)
         self.max_angular_v = rospy.get_param('/robot_info/max_speed_angular', 1.5708)
 
         ## maximal acceleration, linear and angular, both absolute
-        self.max_linear_a = rospy.get_param('/robot_info/max_acceleration_linear', 2.0)
-        self.max_angular_a = rospy.get_param('/robot_info/max_acceleration_angular', 1.0)
+        self.max_linear_ax = rospy.get_param('/robot_info/max_acceleration_linear', 10.0)
+        self.max_linear_ay = rospy.get_param('/robot_info/max_acceleration_linear', 10.0)
+        self.max_angular_a = rospy.get_param('/robot_info/max_acceleration_angular', 1.5708)
 
+        ## maximal velocity, linear and angular, both absolute
+        self.min_linear_vx = rospy.get_param('/robot_info/max_speed_linear', -10.0)
+        self.min_linear_vy = rospy.get_param('/robot_info/max_speed_linear', -10.0)
+        self.min_angular_v = rospy.get_param('/robot_info/max_speed_angular', -1.5708)
 
+        ## maximal acceleration, linear and angular, both absolute
+        self.min_linear_ax = rospy.get_param('/robot_info/max_acceleration_linear', -10.0)
+        self.min_linear_ay = rospy.get_param('/robot_info/max_acceleration_linear', -10.0)
+        self.min_angular_a = rospy.get_param('/robot_info/max_acceleration_angular', -1.5708)
+
+        min_time = -1.0
+        max_time = 1000.0
 
     def normalizeMotionState(self, s): # s is a np.array whose shape is (10,)
         assert len(s) == 10

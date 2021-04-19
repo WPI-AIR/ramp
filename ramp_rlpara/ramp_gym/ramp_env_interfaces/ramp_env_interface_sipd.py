@@ -62,35 +62,12 @@ class RampEnvSipd(gym.Env):
         self.start_in_step = False
         self.max_reward = -999.9
 
-        self.a0 = 0.0
-        self.a1 = 1.0
-        self.b0 = 0.0
-        self.b1 = 1.0
-        self.d0 = 0.0
-        self.d1 = 1.0
-        self.l0 = 0.0
-        self.l1 = 1.0
-        self.k0 = 0.0
-        self.k1 = 1.0
-        #self.best_A = 0.10
-        #self.best_D = 0.15
-
         # what values for best?
-
-        self.best_Ap = 0.10
-        self.best_Bp = 0.10
-        self.best_dp = 0.10
-        self.best_L = 0.10
-        self.best_k = 0.10
-        #self.preset_A = 0.05
-        #self.preset_D = 0.65
         
         self.action_space = spaces.Discrete(243) #81
-        #self.observation_space = spaces.Box(np.array([self.utility.min_x, self.utility.min_y, self.a0, self.b0, self.d0. self.l0, self.k0]),
-        #                                    np.array([self.utility.max_x, self.utility.max_y, self.a1, self.b1, self.d1. self.l1, self.k1])) # single motion state
-        
-        self.observation_space = spaces.Box(np.array([self.utility.min_x, self.utility.min_y, self.a0, self.b0, self.d0, self.l0, self.k0]),
-                                            np.array([self.utility.max_x, self.utility.max_y, self.a1, self.b1, self.d1, self.l1, self.k1])) # single motion state
+
+        self.observation_space = spaces.Box(np.array([self.utility.min_x, self.utility.min_y, self.min_theta, self.min_linear_vx, self.min_linear_vy, self.min_angular_v, self.min_linear_ax, self.min_linear_ay, self.min_angular_a, min_time]),
+                                            np.array([self.utility.max_x, self.utility.max_y, self.max_theta, self.max_linear_vx, self.max_linear_vy, self.max_angular_v, self.max_linear_ax, self.max_linear_ay, self.max_angular_a, max_time])) # single motion state
         self.best_traj = None
         self.best_t = None
         self.this_exe_info = None
@@ -292,24 +269,34 @@ class RampEnvSipd(gym.Env):
 
 
     def getOb(self):
-        Ap = rospy.get_param('/ramp/eval_weight_Ap')
-        Bp = rospy.get_param('/ramp/eval_weight_Bp')
-        dp = rospy.get_param('/ramp/eval_weight_dp')
-        L = rospy.get_param('/ramp/eval_weight_L')
-        k = rospy.get_param('/ramp/eval_weight_k')
 
         if self.best_t is None or len(self.best_t.holonomic_path.points) < 2:
-            return np.array([[0.0, 0.0, Ap, Bp, dp, L, k]])
+            return np.array([[0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0]])
 
         x1 = self.best_t.holonomic_path.points[1].motionState.positions[0]
         y1 = self.best_t.holonomic_path.points[1].motionState.positions[1]
-        ob = np.array([[x1, y1, Ap, Bp, dp, L, k]])
+        th1 = self.best_t.holonomic_path.points[1].motionState.positions[2]
+        vx1 = self.best_t.holonomic_path.points[1].motionState.velocities[0]
+        vy1 = self.best_t.holonomic_path.points[1].motionState.velocities[1]
+        vth1 = self.best_t.holonomic_path.points[1].motionState.velocities[2]
+        ax1 = self.best_t.holonomic_path.points[1].motionState.accelerations[0]
+        ay1 = self.best_t.holonomic_path.points[1].motionState.accelerations[1]
+        ath1 = self.best_t.holonomic_path.points[1].motionState.accelerations[2]
+        time = self.best_t.holonomic_path.points[1].motionState.time
+        ob = np.array([[x1, y1, th1, vx1, vy1, vth1, ax1, ay1, ath1, time]])
         length = len(self.best_t.holonomic_path.points)
         for i in range(2, length):
-            xi = self.best_t.holonomic_path.points[i].motionState.positions[0]
-            yi = self.best_t.holonomic_path.points[i].motionState.positions[1]
-            ob = np.concatenate((ob, [[xi, yi, Ap, Bp, dp, L, k]]))
-
+            x1 = self.best_t.holonomic_path.points[1].motionState.positions[0]
+            y1 = self.best_t.holonomic_path.points[1].motionState.positions[1]
+            th1 = self.best_t.holonomic_path.points[1].motionState.positions[2]
+            vx1 = self.best_t.holonomic_path.points[1].motionState.velocities[0]
+            vy1 = self.best_t.holonomic_path.points[1].motionState.velocities[1]
+            vth1 = self.best_t.holonomic_path.points[1].motionState.velocities[2]
+            ax1 = self.best_t.holonomic_path.points[1].motionState.accelerations[0]
+            ay1 = self.best_t.holonomic_path.points[1].motionState.accelerations[1]
+            ath1 = self.best_t.holonomic_path.points[1].motionState.accelerations[2]
+            time = self.best_t.holonomic_path.points[1].motionState.time
+            ob = np.concatenate((ob, [[xi, yi, thi, vxi, vyi, vthi, axi, ayi, athi, time]]))
         return ob
 
 
