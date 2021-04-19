@@ -78,7 +78,7 @@ nb_actions = env.action_space.n
 
 # Next, we build a very simple model Q(s,a).
 model = Sequential()
-model.add(LSTM(16, input_shape=(1,4)))
+model.add(LSTM(16, input_shape=(1,7)))
 # model.add(Flatten(input_shape=(1,) + env.observation_space.shape)) # s is (x, y, coe)
 model.add(Dense(16))
 model.add(Activation('relu'))
