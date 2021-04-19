@@ -9,6 +9,7 @@
 #include "ramp_msgs/PedSim.h"
 #include "nav_msgs/Odometry.h"
 #include "geometry_msgs/Pose.h"
+#include "geometry_msgs/Point.h"
 
 
 
@@ -25,9 +26,11 @@ class Evaluate {
     
     void pedsimParams(const ramp_msgs::PedSim& msg);
     float get_dp();
+    void get_np();
 
     geometry_msgs::Pose robot_pose;
     geometry_msgs::Pose ped_pose;
+    geometry_msgs::Point np_;  // To do rename to np_ after removing the other np
 
     /** Different evaluation criteria */
     EuclideanDistance eucDist_;

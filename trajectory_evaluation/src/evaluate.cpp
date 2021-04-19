@@ -36,6 +36,14 @@ float Evaluate::get_dp(){
   // std::cout<< dp << std::endl;
 }
 
+void Evaluate::get_np(){
+  float dp = get_dp();
+
+  np_.x = (robot_pose.position.x - ped_pose.position.x)/dp;
+  np_.y = (robot_pose.position.y - ped_pose.position.y)/dp;
+  // std::cout<< dp << std::endl;
+}
+
 void Evaluate::perform(ramp_msgs::EvaluationRequest& req, ramp_msgs::EvaluationResponse& res)
 {
   //ROS_INFO("In Evaluate::perform()");
