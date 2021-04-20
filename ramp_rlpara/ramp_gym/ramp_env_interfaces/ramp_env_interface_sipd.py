@@ -67,12 +67,8 @@ class RampEnvSipd(gym.Env):
         self.a1 = 1.0
         self.b0 = 0.0
         self.b1 = 1.0
-        self.d0 = 0.0
-        self.d1 = 1.0
         self.l0 = 0.0
         self.l1 = 1.0
-        self.k0 = 0.0
-        self.k1 = 1.0
         #self.best_A = 0.10
         #self.best_D = 0.15
 
@@ -80,9 +76,7 @@ class RampEnvSipd(gym.Env):
 
         self.best_Ap = 0.10
         self.best_Bp = 0.10
-        self.best_dp = 0.10
         self.best_L = 0.10
-        self.best_k = 0.10
         #self.preset_A = 0.05
         #self.preset_D = 0.65
         
@@ -100,7 +94,7 @@ class RampEnvSipd(gym.Env):
         self.one_exe_info_sub = rospy.Subscriber("ramp_collection_ramp_ob_one_run", RampObservationOneRunning,
                                                  self.oneExeInfoCallback)
 
-        self.setState(1.0, 0.45, 0.80, 0.50, 0.50) # TODO: check state values (hyperparam?)
+        self.setState(1.0, 1.0, 1.0) # TODO: check state values (hyperparam?)
 
 
 
@@ -180,10 +174,8 @@ class RampEnvSipd(gym.Env):
 
         Ap = rospy.get_param('/ramp/eval_weight_Ap')
         Bp = rospy.get_param('/ramp/eval_weight_Bp')
-        dp = rospy.get_param('/ramp/eval_weight_dp')
         L = rospy.get_param('/ramp/eval_weight_L')
-        k = rospy.get_param('/ramp/eval_weight_k')
-        coes = np.array([Ap, Bp, dp, L, k])
+        coes = np.array([Ap, Bp, L])
 
         self.oneCycle(start_planner=True)
         return self.getOb(), coes
@@ -200,35 +192,29 @@ class RampEnvSipd(gym.Env):
         ------
             (float): Delta A, D weight.
         """
-        action_space_matrix = list(set(itertools.permutations([0,0,0,0,0,1,1,1,1,1,2,2,2,2,2], 5)))
+        action_space_matrix = list(set(itertools.permutations([0,0,0,1,1,1,2,2,2], 3)))
 
         dAp = action_space_matrix[action][0]
         dBp = action_space_matrix[action][1]
-        ddp = action_space_matrix[action][2]
-        dL = action_space_matrix[action][3]
-        dk = action_space_matrix[action][4]
+        dL = action_space_matrix[action][2]
 
         dAp = (dAp - 1) * self.action_resolution
         dBp = (dBp - 1) * self.action_resolution
-        ddp = (ddp - 1) * self.action_resolution
-        dL = (dL - 1) * self.action_resolution        
-        dk = (dk - 1) * self.action_resolution         
+        dL = (dL - 1) * self.action_resolution               
 
-        return dAp, dBp, ddp, dL, dk
+        return dAp, dBp, dL
 
 
 
     def step(self, action):
         print('################################################################')
-        dAp, dBp, ddp, dL, dk = self.decodeAction(action)
+        dAp, dBp, dL = self.decodeAction(action)
 
         ## set the coefficients of RAMP
         Ap = rospy.get_param('/ramp/eval_weight_Ap')
         Bp = rospy.get_param('/ramp/eval_weight_Bp')
-        dp = rospy.get_param('/ramp/eval_weight_dp')
         L = rospy.get_param('/ramp/eval_weight_L')
-        k = rospy.get_param('/ramp/eval_weight_k')
-        self.setState(Ap+dAp, Bp+dBp, dp+ddp, L+dL, k+dk)
+        self.setState(Ap+dAp, Bp+dBp, L+dL)
 
         self.oneCycle(start_planner=self.start_in_step)
         # Reward are for the whole path and its coefficients.
@@ -236,17 +222,13 @@ class RampEnvSipd(gym.Env):
 
 
 
-    def setState(self, Ap, Bp, dp, L, k):
+    def setState(self, Ap, Bp, L):
         Ap = np.clip(Ap, self.a0, self.a1)
         Bp = np.clip(Bp, self.b0, self.b1)
-        dp = np.clip(dp, self.d0, self.d1)
         L = np.clip(L, self.l0, self.l1)
-        k = np.clip(k, self.k0, self.k1)
         rospy.set_param('/ramp/eval_weight_Ap', Ap.item())
         rospy.set_param('/ramp/eval_weight_Bp', Bp.item())
-        rospy.set_param('/ramp/eval_weight_dp', dp.item())
         rospy.set_param('/ramp/eval_weight_L', L.item())
-        rospy.set_param('/ramp/eval_weight_k', k.item())
 
 
 
@@ -279,9 +261,7 @@ class RampEnvSipd(gym.Env):
             self.max_reward = reward
             self.best_Ap = rospy.get_param('/ramp/eval_weight_Ap')
             self.best_Bp = rospy.get_param('/ramp/eval_weight_Bp')
-            self.best_dp = rospy.get_param('/ramp/eval_weight_dp')
             self.best_L = rospy.get_param('/ramp/eval_weight_L')
-            self.best_k = rospy.get_param('/ramp/eval_weight_k')
 
         if self.done:
             reward += 30.0 # TODO: Remove this?
