@@ -41,6 +41,6 @@
 
   <node name="pub_tf_missing_turtlebot_gazebo"  pkg="ramp_sensing" type="pub_tf_missing_turtlebot_gazebo" />
 
-  <node name="pub_map_equal_odom" pkg="ramp_sensing" type="pub_map_equal_odom" />
+<!--   <node name="pub_map_equal_odom" pkg="ramp_sensing" type="pub_map_equal_odom" /> -->
 
 </launch>
