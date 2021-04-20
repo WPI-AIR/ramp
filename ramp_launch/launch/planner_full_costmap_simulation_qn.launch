@@ -37,6 +37,8 @@
 <!-- Planner -->
 <node name="ramp_planner" pkg="ramp_planner" type="ramp_planner" output="screen" respawn="true" />
 
+<node name="pub_tf_missing_turtlebot_gazebo"  pkg="ramp_sensing" type="pub_tf_missing_turtlebot_gazebo" />
+
 <!-- Move obstacles -->
 <!-- <node name="move_obstacles" pkg="ramp_planner" type="move_gazebo_obs" output="log" respawn="true" /> -->
 
