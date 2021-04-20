@@ -38,15 +38,12 @@ class Utility(object):
 
         self.coe_dAp_range = rospy.get_param('/coe_dAp_range', [-0.01, 0.01])
         self.coe_dBp_range = rospy.get_param('/coe_dBp_range', [-0.01, 0.01])
-        self.coe_ddp_range = rospy.get_param('/coe_ddp_range', [-0.01, 0.01])
         self.coe_dL_range = rospy.get_param('/coe_dL_range', [-0.01, 0.01])
-        self.coe_dk_range = rospy.get_param('/coe_dk_range', [-0.01, 0.01])
         
         self.coe_Ap_range = rospy.get_param('/coe_Ap_range', [0.0, 1.0])
         self.coe_Bp_range = rospy.get_param('/coe_Bp_range', [0.0, 1.0])
-        self.coe_dp_range = rospy.get_param('/coe_dp_range', [0.0, 1.0])
         self.coe_L_range = rospy.get_param('/coe_L_range', [0.0, 1.0])
-        self.coe_k_range = rospy.get_param('/coe_k_range', [0.0, 1.0])
+
 
         ## max time stamp of motion state in the best trajectory
         self.time_stamp_max = rospy.get_param('/time_stamp_max', 25.0) # seconds
