@@ -3,7 +3,7 @@
 #include <math.h>
 Evaluate::Evaluate() : orientation_infeasible_(0), T_norm_(50.0), A_norm_(PI), _1_D_norm_(1.0), coll_time_norm_(zero),
                        last_T_weight_(-1.0), last_A_weight_(-1.0), last_D_weight_(-1.0), last_Q_coll_(-1.0), last_Q_kine_(-1.0), 
-                       Ap(1.0), Bp(1.0), dp(1.0), L(1.0), rp(1.0), np(1.0) {}
+                       Ap(1.0), Bp(1.0), L(1.0) {}
 
 // void Evaluate::pedsimParams(const ramp_msgs::PedSim& msg){
 //   ROS_INFO("Extracting PedSim Data");
@@ -36,11 +36,13 @@ float Evaluate::get_dp(){
   // std::cout<< dp << std::endl;
 }
 
-void Evaluate::get_np(){
+float Evaluate::get_np(){
   float dp = get_dp();
 
   np_.x = (robot_pose.position.x - ped_pose.position.x)/dp;
   np_.y = (robot_pose.position.y - ped_pose.position.y)/dp;
+  return sqrt(pow((np_.x), 2) +
+                       pow((np_.y), 2));
   // std::cout<< dp << std::endl;
 }
 
@@ -260,9 +262,7 @@ void Evaluate::performFitness(ramp_msgs::RampTrajectory& trj, const double& offs
 
     Ap /= Ap_norm_;
     Bp /= Bp_norm_;
-    dp /= dp_norm_;
     L /= L_norm_;
-    k /= k_norm_;
     
     //ROS_INFO("Normalized terms T: %f A: %f D: %f", T, A, D);
 
@@ -322,17 +322,6 @@ void Evaluate::performFitness(ramp_msgs::RampTrajectory& trj, const double& offs
       is_set_Bp = true;
     }
 
-    dp_weight_ = 1.0;
-    if (!ros::param::get("/ramp/eval_weight_dp", dp_weight_)) {
-      // if fail to get the parameter
-      dp_weight_ = 1.0; // set it to the default
-    }
-    static bool is_set_dp = false;
-    if (!is_set_dp) {
-      ros::param::set("/ramp/eval_weight_dp", dp_weight_);
-      is_set_dp = true;
-    }
-
     L_weight_ = 1.0;
     if (!ros::param::get("/ramp/eval_weight_L", L_weight_)) {
       // if fail to get the parameter
@@ -342,17 +331,6 @@ void Evaluate::performFitness(ramp_msgs::RampTrajectory& trj, const double& offs
     if (!is_set_L) {
       ros::param::set("/ramp/eval_weight_L", L_weight_);
       is_set_L = true;
-    }
-
-    k_weight_ = 1.0;
-    if (!ros::param::get("/ramp/eval_weight_k", k_weight_)) {
-      // if fail to get the parameter
-      k_weight_ = 1.0; // set it to the default
-    }
-    static bool is_set_k = false;
-    if (!is_set_k) {
-      ros::param::set("/ramp/eval_weight_k", k_weight_);
-      is_set_k = true;
     }
     // T *= T_weight_;
     // A *= A_weight_;
@@ -367,7 +345,9 @@ void Evaluate::performFitness(ramp_msgs::RampTrajectory& trj, const double& offs
 
     // Get Euclidean distance of the ped from the robot
     float dp = get_dp();
-    
+    float rp = 3.0;
+    float np = get_np();
+    result = 100000; 
     double omega = L + (1-L)*(1 - np/2);
     fgoal += k_weight_ * k ; //TODO: Add velocity term
     F += Ap_weight_*exp((rp- (dp_weight_* dp))/(Bp_weight_* Bp)) * omega *(-np);
@@ -443,15 +423,13 @@ void Evaluate::performFitness(ramp_msgs::RampTrajectory& trj, const double& offs
   // if weights change, print them
   if (Ap_weight_ != last_Ap_weight_ ||
       Bp_weight_ != last_Bp_weight_ ||
-      dp_weight_ != last_dp_weight_ ||
       L_weight_ != last_L_weight_ ||
-      k_weight_ != last_k_weight_ ||
       Q_coll_   != last_Q_coll_   ||
       Q_kine_   != last_Q_kine_) {
-        printf("weights have changed to: Ap = %.3lf, Bp = %.5lf, dp = %.3lf, L = %.3lf, k = %.3lf, Qc = %.3lf, Qk = %.3lf\n",
-          Ap_weight_, Bp_weight_, dp_weight_, L_weight_, k_weight_, Q_coll_, Q_kine_);
-        last_Ap_weight_ = Ap_weight_; last_Bp_weight_ = Bp_weight_; last_dp_weight_ = dp_weight_;
-        last_L_weight_ = L_weight_; last_k_weight_ = k_weight_; last_Q_coll_   = Q_coll_;   last_Q_kine_   = Q_kine_;
+        printf("weights have changed to: Ap = %.3lf, Bp = %.5lf, L = %.3lf, Qc = %.3lf, Qk = %.3lf\n",
+          Ap_weight_, Bp_weight_, L_weight_, Q_coll_, Q_kine_);
+        last_Ap_weight_ = Ap_weight_; last_Bp_weight_ = Bp_weight_; 
+        last_L_weight_ = L_weight_; last_Q_coll_   = Q_coll_;   last_Q_kine_   = Q_kine_;
       }
 
   // ROS_INFO("performFitness time: %f", (ros::Time::now() - t_start).toSec());
