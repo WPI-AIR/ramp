@@ -36,13 +36,14 @@ float Evaluate::get_dp(){
   // std::cout<< dp << std::endl;
 }
 
-float Evaluate::get_np(){
+void Evaluate::get_np(){
   float dp = get_dp();
 
   np_.x = (robot_pose.position.x - ped_pose.position.x)/dp;
   np_.y = (robot_pose.position.y - ped_pose.position.y)/dp;
-  return sqrt(pow((np_.x), 2) +
-                       pow((np_.y), 2));
+  
+  // return sqrt(pow((np_.x), 2) +
+  //                      pow((np_.y), 2));
   // std::cout<< dp << std::endl;
 }
 
@@ -346,11 +347,16 @@ void Evaluate::performFitness(ramp_msgs::RampTrajectory& trj, const double& offs
     // Get Euclidean distance of the ped from the robot
     float dp = get_dp();
     float rp = 3.0;
-    float np = get_np();
+    get_np();
     result = 100000; 
     double omega = L + (1-L)*(1 - np/2);
     fgoal += k_weight_ * k ; //TODO: Add velocity term
-    F += Ap_weight_*exp((rp- (dp_weight_* dp))/(Bp_weight_* Bp)) * omega *(-np);
+    float Fx = Ap_weight_*exp((rp- (dp_weight_* dp))/(Bp_weight_* Bp)) * omega *(-np_.x);
+    float Fy = Ap_weight_*exp((rp- (dp_weight_* dp))/(Bp_weight_* Bp)) * omega *(-np_.y);
+
+    F += sqrt(pow((Fx), 2) + pow((Fy), 2));
+    // F += Ap_weight_*exp((rp- (dp_weight_* dp))/(Bp_weight_* Bp)) * omega *(-np);
+
     cost += T_weight_ * T + A_weight_ * A + D_weight_ * _1_D + F + fgoal;
     result = 1.0 / cost;
 
