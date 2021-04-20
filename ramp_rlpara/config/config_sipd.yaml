@@ -21,9 +21,7 @@ gradient_clip_norm: 0.5
 
 coe_dAp_range: [-0.05, 0.05] # coefficients of interaction force strength
 coe_dBp_range: [-0.05, 0.05] # coefficients of interaction force range
-coe_ddp_range: [-0.05, 0.05] # euclidian distance between robot and person
 coe_dL_range: [-0.05, 0.05] # lambda
-coe_dk_range: [-0.05, 0.05] # frequency coeff 
 
 
 
@@ -32,6 +30,4 @@ coe_dk_range: [-0.05, 0.05] # frequency coeff
 
 coe_Ap_range: [0.0, 1.0] # coefficeints of interaction force strength
 coe_Bp_range: [0.0, 1.0] # coefficients of interaction force range
-coe_dp_range: [0.0, 1.0] # euclidian distance between robot and person
 coe_L_range: [0.0, 1.0] # lambda
-coe_k_range: [0.0, 1.0] # frequency coeff
