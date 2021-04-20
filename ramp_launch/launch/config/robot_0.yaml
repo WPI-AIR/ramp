@@ -19,5 +19,5 @@ max_acceleration_linear: 1.0
 max_acceleration_angular: 0.5
 
 # relative to map
-start: [0, 0, 0.785]
+start: [0, 0, 0]
 goal:  [6.0, 6.0, 0.785]
