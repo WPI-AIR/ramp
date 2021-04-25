@@ -20,6 +20,15 @@ import math
 from colorama import init as clr_ama_init
 from colorama import Fore
 import itertools
+
+import tensorflow as tf 
+import datetime
+
+
+# current_time = datetime.datetime.now().strftime("%Y%m%d-%H%M%S")
+# train_log_dir = 'logs/' + current_time + '/'
+# train_summary_writer = tf.summary.create_file_writer(train_log_dir)
+
 clr_ama_init(autoreset = True)
 
 ## get directory
@@ -29,6 +38,8 @@ sys.path.append(lib_dir)
 
 ## from .py_file_name import class_name
 from f_utility import Utility
+
+
 
 class RampEnvSipd(gym.Env):
 
@@ -80,7 +91,7 @@ class RampEnvSipd(gym.Env):
         #self.preset_A = 0.05
         #self.preset_D = 0.65
         
-        self.action_space = spaces.Discrete(243) #81
+        self.action_space = spaces.Discrete(27) #81
 
         self.observation_space = spaces.Box(np.array([self.utility.min_x, self.utility.min_y, self.utility.min_theta, self.utility.min_linear_vx, self.utility.min_linear_vy, self.utility.min_angular_v, self.utility.min_linear_ax, self.utility.min_linear_ay, self.utility.min_angular_a, self.utility.min_time]),
                                             np.array([self.utility.max_x, self.utility.max_y, self.utility.max_theta, self.utility.max_linear_vx, self.utility.max_linear_vy, self.utility.max_angular_v, self.utility.max_linear_ax, self.utility.max_linear_ay, self.utility.max_angular_a, self.utility.max_time])) # single motion state
@@ -96,6 +107,16 @@ class RampEnvSipd(gym.Env):
 
         self.setState(1.0, 1.0, 1.0) # TODO: check state values (hyperparam?)
 
+        config = tf.compat.v1.ConfigProto(allow_soft_placement=True)
+        self.session = tf.compat.v1.InteractiveSession(config=config)
+        if not os.path.exists('summaries'):
+            print("Creating summaries folder ...")
+            os.mkdir('summaries')
+        if not os.path.exists(os.path.join('summaries','first')):
+            os.mkdir(os.path.join('summaries','first'))
+
+        self.summ_writer = tf.compat.v1.summary.FileWriter("/home/sapanostic/data/runs")
+        self.step_i = 0
 
 
     def oneCycle(self, start_planner=False):
@@ -105,6 +126,8 @@ class RampEnvSipd(gym.Env):
         -------
             Whether this cycle succeeds or not.
         """
+        print("start_planner: ", start_planner)
+        start_planner = True
         if start_planner:
             ## Wait environment get ready......
             print("Wait environment get ready......")
@@ -130,7 +153,7 @@ class RampEnvSipd(gym.Env):
 
             cur_time = rospy.get_rostime()
             has_waited_for = cur_time.to_sec() - start_waiting_time.to_sec()
-            if has_waited_for >= 20.0: # overtime
+            if has_waited_for >= 100.0: # overtime
                 print("Long time no response!")
                 print("Wait environment get ready......")
 
@@ -193,7 +216,6 @@ class RampEnvSipd(gym.Env):
             (float): Delta A, D weight.
         """
         action_space_matrix = list(set(itertools.permutations([0,0,0,1,1,1,2,2,2], 3)))
-
         dAp = action_space_matrix[action][0]
         dBp = action_space_matrix[action][1]
         dL = action_space_matrix[action][2]
@@ -215,7 +237,10 @@ class RampEnvSipd(gym.Env):
         Bp = rospy.get_param('/ramp/eval_weight_Bp')
         L = rospy.get_param('/ramp/eval_weight_L')
         self.setState(Ap+dAp, Bp+dBp, L+dL)
-
+        self.step_i += 1
+        reward = self.getReward()
+        summary = tf.compat.v1.Summary(value=[tf.compat.v1.Summary.Value(tag="reward", simple_value=reward)])
+        self.summ_writer.add_summary(summary, global_step=self.step_i)
         self.oneCycle(start_planner=self.start_in_step)
         # Reward are for the whole path and its coefficients.
         return self.getOb(), self.getReward(), self.done, self.getInfo()
