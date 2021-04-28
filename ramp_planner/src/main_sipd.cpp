@@ -3,6 +3,7 @@
 #include <visualization_msgs/MarkerArray.h>
 #include <stdlib.h>
 #include <random>
+#include "pedsim_msgs/AgentStates.h"
  
 
 Utility utility;
@@ -604,6 +605,8 @@ int main(int argc, char** argv)
   bool is_offline_learning;
   ros::param::param("/ramp/is_offline_learning", is_offline_learning, true);
 
+  ros::Subscriber pedSimSub = handle.subscribe("/pedsim_simulator/simulated_agents", 1000, &Planner::pedSimCallback, &my_planner);
+  
   /******* Start the planner *******/
   if(use_start_param && !is_offline_learning) // TODO: use triggered srv
   {

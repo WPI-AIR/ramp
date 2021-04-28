@@ -126,8 +126,8 @@ class RampEnvSipd(gym.Env):
         -------
             Whether this cycle succeeds or not.
         """
-        print("start_planner: ", start_planner)
-        start_planner = True
+        # print("start_planner: ", start_planner)
+        # start_planner = True 
         if start_planner:
             ## Wait environment get ready......
             print("Wait environment get ready......")
@@ -153,10 +153,9 @@ class RampEnvSipd(gym.Env):
 
             cur_time = rospy.get_rostime()
             has_waited_for = cur_time.to_sec() - start_waiting_time.to_sec()
-            if has_waited_for >= 100.0: # overtime
+            if has_waited_for >= 50.0: # overtime
                 print("Long time no response!")
-                print("Wait environment get ready......")
-
+                print("Wait environment get ready......")               
                 try:
                     rospy.wait_for_service("env_ready_srv")
                 except rospy.exceptions.ROSInterruptException:
@@ -199,7 +198,7 @@ class RampEnvSipd(gym.Env):
         Bp = rospy.get_param('/ramp/eval_weight_Bp')
         L = rospy.get_param('/ramp/eval_weight_L')
         coes = np.array([Ap, Bp, L])
-
+        
         self.oneCycle(start_planner=True)
         return self.getOb(), coes
 
@@ -303,7 +302,7 @@ class RampEnvSipd(gym.Env):
         x1 = self.best_t.holonomic_path.points[1].motionState.positions[0]
         y1 = self.best_t.holonomic_path.points[1].motionState.positions[1]
         th1 = self.best_t.holonomic_path.points[1].motionState.positions[2]
-        if self.best_t.holonomic_path.points[1].motionState.velocities is ():
+        if self.best_t.holonomic_path.points[1].motionState.velocities is () or self.best_t.holonomic_path.points[1].motionState.accelerations is ():
             vx1 = 0.0
             vy1 = 0.0
             vth1 = 0.0
@@ -323,11 +322,11 @@ class RampEnvSipd(gym.Env):
         ob = np.array([[x1, y1, th1, vx1, vy1, vth1, ax1, ay1, ath1, time]])
         length = len(self.best_t.holonomic_path.points)
         for i in range(2, length):
-            xi = self.best_t.holonomic_path.points[1].motionState.positions[0]
-            yi = self.best_t.holonomic_path.points[1].motionState.positions[1]
-            thi = self.best_t.holonomic_path.points[1].motionState.positions[2]
+            xi = self.best_t.holonomic_path.points[i].motionState.positions[0]
+            yi = self.best_t.holonomic_path.points[i].motionState.positions[1]
+            thi = self.best_t.holonomic_path.points[i].motionState.positions[2]
 
-            if self.best_t.holonomic_path.points[1].motionState.velocities is ():
+            if self.best_t.holonomic_path.points[i].motionState.velocities is () or self.best_t.holonomic_path.points[i].motionState.accelerations is ():
                 vxi = 0.0
                 vyi = 0.0
                 vthi = 0.0
@@ -335,14 +334,14 @@ class RampEnvSipd(gym.Env):
                 ayi = 0.0
                 athi = 0.0
             else:
-                vxi = self.best_t.holonomic_path.points[1].motionState.velocities[0]
-                vyi = self.best_t.holonomic_path.points[1].motionState.velocities[1]
-                vthi = self.best_t.holonomic_path.points[1].motionState.velocities[2]
-                axi = self.best_t.holonomic_path.points[1].motionState.accelerations[0]
-                ayi = self.best_t.holonomic_path.points[1].motionState.accelerations[1]
-                athi = self.best_t.holonomic_path.points[1].motionState.accelerations[2]
+                vxi = self.best_t.holonomic_path.points[i].motionState.velocities[0]
+                vyi = self.best_t.holonomic_path.points[i].motionState.velocities[1]
+                vthi = self.best_t.holonomic_path.points[i].motionState.velocities[2]
+                axi = self.best_t.holonomic_path.points[i].motionState.accelerations[0]
+                ayi = self.best_t.holonomic_path.points[i].motionState.accelerations[1]
+                athi = self.best_t.holonomic_path.points[i].motionState.accelerations[2]
 
-            time = self.best_t.holonomic_path.points[1].motionState.time
+            time = self.best_t.holonomic_path.points[i].motionState.time
             ob = np.concatenate((ob, [[xi, yi, thi, vxi, vyi, vthi, axi, ayi, athi, time]]))
         return ob
 

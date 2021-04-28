@@ -25,6 +25,7 @@
 #include <type_traits>
 #include <tf/transform_broadcaster.h>
 #include <boost/algorithm/clamp.hpp>
+#include "pedsim_msgs/AgentStates.h"
 
 #define ENV_SRV_NAME "response2para_update"
 
@@ -278,7 +279,9 @@ class Planner {
     const ramp_msgs::RampTrajectory getPredictedTrajectory(const ramp_msgs::Obstacle ob) const;
     const ramp_msgs::Path getObstaclePath(const ramp_msgs::Obstacle ob, const MotionType mt) const;
     
-    void sensingCycleCallback     (const ramp_msgs::ObstacleList& msg);
+    geometry_msgs::Pose ped_pose;
+    void pedSimCallback(const pedsim_msgs::AgentStates::ConstPtr msg);
+    void sensingCycleCallback(const ramp_msgs::ObstacleList& msg);
     void updateCbPose(const geometry_msgs::PoseWithCovarianceStamped msg);
     void updateCbControlNode(const ramp_msgs::MotionState& msg);
 
