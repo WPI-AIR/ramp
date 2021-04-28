@@ -44,7 +44,7 @@ while True: # TODO: enable key interrupt or some other
     # os.system('rosservice call /gazebo/reset_world "{}"')
 
     ## start ramp_planner and other necessary nodes and waiting for the /ramp/start_planner to be True
-    os.system('roslaunch ramp_launch planner_full_costmap_simulation_qn.launch')
+    os.system('roslaunch ramp_launch planner_full_costmap_simulation_sipd.launch')
 
     ## kiil (interrupt) the child rosbag process here
     rosbag_proc_name = "/opt/ros/indigo/lib/rosbag/record"
