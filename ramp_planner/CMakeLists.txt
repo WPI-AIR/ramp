@@ -1,7 +1,7 @@
 cmake_minimum_required(VERSION 2.8.3)
 project(ramp_planner)
 
-find_package(catkin REQUIRED COMPONENTS gazebo_msgs geometry_msgs message_generation ramp_msgs roscpp roslib std_msgs tf)
+find_package(catkin REQUIRED COMPONENTS gazebo_msgs geometry_msgs pedsim_msgs message_generation ramp_msgs roscpp roslib std_msgs tf)
 
 
 
@@ -43,7 +43,7 @@ target_link_libraries(ramp_planner_sipd ${catkin_LIBRARIES} yaml-cpp)
 ## Add cmake target dependencies of the executable/library
 ## as an example, message headers may need to be generated before nodes
 add_dependencies(${PROJECT_NAME} ramp_msgs_generate_messages_cpp)
-add_dependencies(ramp_planner_sipd ramp_msgs_generate_messages_cpp)
+add_dependencies(ramp_planner_sipd ramp_msgs_generate_messages_cpp pedsim_msgs_generate_messages_cpp)
 
 add_executable(pub_map_odom src/main_pub_map_odom.cpp)
 target_link_libraries(pub_map_odom ${catkin_LIBRARIES})
