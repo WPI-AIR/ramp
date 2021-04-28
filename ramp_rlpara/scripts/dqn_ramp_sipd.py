@@ -38,14 +38,14 @@ os.system('mkdir -p ' + file_dir)
 from f_logger import RampRlLogger
 ## Initialize logger
 coarse_logger = RampRlLogger(file_dir + "dqn_sipd.csv",
-                             ['plan#', 'Ap', 'Bp', 'L',
-                              'plan_reward', 'plan_time', 'obs_dis',
-                              'loss', 'mae', 'mean_q'])
+							 ['plan#', 'Ap', 'Bp', 'L',
+							  'plan_reward', 'plan_time', 'obs_dis',
+							  'loss', 'mae', 'mean_q'])
 
 epi_logger = RampRlLogger(file_dir + "dqn_epi_sipd.csv",
-                             ['epi#',
-                              'epi_reward',
-                              'epi_steps'])
+							 ['epi#',
+							  'epi_reward',
+							  'epi_steps'])
 
 
 
@@ -66,13 +66,13 @@ nb_actions = env.action_space.n
 # ob, coes = env.reset()
 # print(ob)
 # print(coes)
-
+# d = False
 # while not rospy.core.is_shutdown():
-#     ob, r, d, info = env.step(4)
-#     print(ob)
-#     print(r)
-#     print(d)
-#     print(info)
+	# ob, r, d, info = env.step(4)
+	# print(ob)
+	# print(r)
+	# print(d)
+	# print(info)
 
 
 
@@ -101,7 +101,7 @@ init_boltz_tau = 1.0
 memory = SequentialMemory(limit=100, window_length=1)
 policy = BoltzmannQPolicy(tau=init_boltz_tau)
 dqn = DQNAgentSi(model=model, nb_actions=nb_actions, memory=memory, nb_steps_warmup=300,
-               target_model_update=0.001, policy=policy)
+			   target_model_update=0.001, policy=policy)
 dqn.compile(Adam(lr=1e-3), metrics=['mae'])
 
 
@@ -118,8 +118,8 @@ dqn.compile(Adam(lr=1e-3), metrics=['mae'])
 log_interval = 1000
 nb_max_episode_steps = None
 dqn.fitSip(env, nb_steps=5000000, log_interval=log_interval,
-           nb_max_episode_steps=nb_max_episode_steps, verbose=2,
-           file_dir=file_dir, logger=coarse_logger, epi_logger=epi_logger)
+		   nb_max_episode_steps=nb_max_episode_steps, verbose=2,
+		   file_dir=file_dir, logger=coarse_logger, epi_logger=epi_logger)
 
 
 

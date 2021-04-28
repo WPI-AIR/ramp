@@ -220,7 +220,15 @@ const ramp_msgs::Path Planner::getObstaclePath(const ramp_msgs::Obstacle ob, con
 
 
 
+void Planner::pedSimCallback(const pedsim_msgs::AgentStates::ConstPtr msg){
+  // ROS_INFO("Hello");
 
+  // int NPed = 
+  
+  // std::cout << msg->agent_states[0].id << std::endl;
+
+  ped_pose = msg->agent_states[0].pose;
+}
 
 
 void Planner::sensingCycleCallback(const ramp_msgs::ObstacleList& msg)
@@ -237,15 +245,15 @@ void Planner::sensingCycleCallback(const ramp_msgs::ObstacleList& msg)
   // obs1x += noise1;
   // obs1x = boost::algorithm::clamp(obs1x, 0.0, x_max);
   // obs1y = x_max - obs1x;
-  // ramp_msgs::Obstacle obs1;
-  // obs1.ob_ms.positions.push_back(obs1x);
-  // obs1.ob_ms.positions.push_back(obs1y);
-  // obs1.ob_ms.positions.push_back(0.0);
-  // obs1.ob_ms.velocities.push_back(0.0);
-  // obs1.ob_ms.velocities.push_back(0.0);
-  // obs1.ob_ms.velocities.push_back(0.0);
-  // obs1.radius = obs1r;
-  // obs_msg.obstacles.push_back(obs1);
+  ramp_msgs::Obstacle obs1;
+  obs1.ob_ms.positions.push_back(ped_pose.position.x);
+  obs1.ob_ms.positions.push_back(ped_pose.position.y);
+  obs1.ob_ms.positions.push_back(0.0);
+  obs1.ob_ms.velocities.push_back(0.0);
+  obs1.ob_ms.velocities.push_back(0.0);
+  obs1.ob_ms.velocities.push_back(0.0);
+  obs1.radius = obs1r;
+  obs_msg.obstacles.push_back(obs1);
   // if (obs1x >= x_max) {
   //   step1 = -fabs(step1);
   // } else if (obs1x <= 0.0) {
@@ -266,25 +274,25 @@ void Planner::sensingCycleCallback(const ramp_msgs::ObstacleList& msg)
   // obs_msg.obstacles.push_back(obs1_1);
 
   // Moving obstacle 2
-  obs2x += step2;
-  double noise2 = 0.15 * rand() / double(RAND_MAX) - 0.075;
-  obs2x += noise2;
-  obs2x = boost::algorithm::clamp(obs2x, 0.0, x2_max);
-  obs2y = x2_max - obs2x;
-  ramp_msgs::Obstacle obs2;
-  obs2.ob_ms.positions.push_back(obs2x);
-  obs2.ob_ms.positions.push_back(obs2y);
-  obs2.ob_ms.positions.push_back(0.0);
-  obs2.ob_ms.velocities.push_back(0.0);
-  obs2.ob_ms.velocities.push_back(0.0);
-  obs2.ob_ms.velocities.push_back(0.0);
-  obs2.radius = obs2r;
-  obs_msg.obstacles.push_back(obs2);
-  if (obs2x >= x2_max) {
-    step2 = -fabs(step2);
-  } else if (obs2x <= 0.0) {
-    step2 = fabs(step2);
-  }
+  // obs2x += step2;
+  // double noise2 = 0.15 * rand() / double(RAND_MAX) - 0.075;
+  // obs2x += noise2;
+  // obs2x = boost::algorithm::clamp(obs2x, 0.0, x2_max);
+  // obs2y = x2_max - obs2x;
+  // ramp_msgs::Obstacle obs2;
+  // obs2.ob_ms.positions.push_back(obs2x);
+  // obs2.ob_ms.positions.push_back(obs2y);
+  // obs2.ob_ms.positions.push_back(0.0);
+  // obs2.ob_ms.velocities.push_back(0.0);
+  // obs2.ob_ms.velocities.push_back(0.0);
+  // obs2.ob_ms.velocities.push_back(0.0);
+  // obs2.radius = obs2r;
+  // obs_msg.obstacles.push_back(obs2);
+  // if (obs2x >= x2_max) {
+  //   step2 = -fabs(step2);
+  // } else if (obs2x <= 0.0) {
+  //   step2 = fabs(step2);
+  // }
 
   // // Moving obstacle 2_1
   // obs2_1x = obs2x + step2 * 6;
@@ -322,15 +330,15 @@ void Planner::sensingCycleCallback(const ramp_msgs::ObstacleList& msg)
   // obs_msg.obstacles.push_back(obs3_1);
 
   // Moving obstacle 3
-  ramp_msgs::Obstacle obs3;
-  obs3.ob_ms.positions.push_back(6.0 - obs2x);
-  obs3.ob_ms.positions.push_back(6.0 - obs2y);
-  obs3.ob_ms.positions.push_back(0.0);
-  obs3.ob_ms.velocities.push_back(0.0);
-  obs3.ob_ms.velocities.push_back(0.0);
-  obs3.ob_ms.velocities.push_back(0.0);
-  obs3.radius = obs3r;
-  obs_msg.obstacles.push_back(obs3);
+  // ramp_msgs::Obstacle obs3;
+  // obs3.ob_ms.positions.push_back(6.0 - obs2x);
+  // obs3.ob_ms.positions.push_back(6.0 - obs2y);
+  // obs3.ob_ms.positions.push_back(0.0);
+  // obs3.ob_ms.velocities.push_back(0.0);
+  // obs3.ob_ms.velocities.push_back(0.0);
+  // obs3.ob_ms.velocities.push_back(0.0);
+  // obs3.radius = obs3r;
+  // obs_msg.obstacles.push_back(obs3);
 
   // // Moving obstacle 3_1
   // ramp_msgs::Obstacle obs3_1;
@@ -344,26 +352,26 @@ void Planner::sensingCycleCallback(const ramp_msgs::ObstacleList& msg)
   // obs_msg.obstacles.push_back(obs3_1);
 
   // Moving obstacle 4
-  ramp_msgs::Obstacle obs4;
-  obs4.ob_ms.positions.push_back(obs2x + 2.0);
-  obs4.ob_ms.positions.push_back(6.0 - obs2y - 2.0);
-  obs4.ob_ms.positions.push_back(0.0);
-  obs4.ob_ms.velocities.push_back(0.0);
-  obs4.ob_ms.velocities.push_back(0.0);
-  obs4.ob_ms.velocities.push_back(0.0);
-  obs4.radius = 0.5;
-  obs_msg.obstacles.push_back(obs4);
+  // ramp_msgs::Obstacle obs4;
+  // obs4.ob_ms.positions.push_back(obs2x + 2.0);
+  // obs4.ob_ms.positions.push_back(6.0 - obs2y - 2.0);
+  // obs4.ob_ms.positions.push_back(0.0);
+  // obs4.ob_ms.velocities.push_back(0.0);
+  // obs4.ob_ms.velocities.push_back(0.0);
+  // obs4.ob_ms.velocities.push_back(0.0);
+  // obs4.radius = 0.5;
+  // obs_msg.obstacles.push_back(obs4);
 
   // Moving obstacle 5
-  ramp_msgs::Obstacle obs5;
-  obs5.ob_ms.positions.push_back(6.0 - obs2x - 2.0);
-  obs5.ob_ms.positions.push_back(obs2y + 2.0);
-  obs5.ob_ms.positions.push_back(0.0);
-  obs5.ob_ms.velocities.push_back(0.0);
-  obs5.ob_ms.velocities.push_back(0.0);
-  obs5.ob_ms.velocities.push_back(0.0);
-  obs5.radius = 0.5;
-  obs_msg.obstacles.push_back(obs5);
+  // ramp_msgs::Obstacle obs5;
+  // obs5.ob_ms.positions.push_back(6.0 - obs2x - 2.0);
+  // obs5.ob_ms.positions.push_back(obs2y + 2.0);
+  // obs5.ob_ms.positions.push_back(0.0);
+  // obs5.ob_ms.velocities.push_back(0.0);
+  // obs5.ob_ms.velocities.push_back(0.0);
+  // obs5.ob_ms.velocities.push_back(0.0);
+  // obs5.radius = 0.5;
+  // obs_msg.obstacles.push_back(obs5);
 
   // ROS_INFO("%lf", obs_msg.obstacles[0].T_w_odom.translation.x);
   
