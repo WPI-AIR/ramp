@@ -38,7 +38,7 @@ os.system('mkdir -p ' + file_dir)
 from f_logger import RampRlLogger
 ## Initialize logger
 coarse_logger = RampRlLogger(file_dir + "dqn_sipd.csv",
-                             ['plan#', 'A', 'D',
+                             ['plan#', 'Ap', 'Bp', 'dp', 'L', 'K'
                               'plan_reward', 'plan_time', 'obs_dis',
                               'loss', 'mae', 'mean_q'])
 
