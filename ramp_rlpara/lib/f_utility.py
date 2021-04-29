@@ -35,6 +35,15 @@ class Utility(object):
         self.coe_Qc_range = rospy.get_param('/coe_Qc_range', [0.0, 1.0])
         self.coe_Qk_range = rospy.get_param('/coe_Qk_range', [0.0, 1.0])
 
+
+        self.coe_dAp_range = rospy.get_param('/coe_dAp_range', [-0.01, 0.01])
+        self.coe_dBp_range = rospy.get_param('/coe_dBp_range', [-0.01, 0.01])
+        self.coe_dL_range = rospy.get_param('/coe_dL_range', [-0.01, 0.01])
+        
+        self.coe_Ap_range = rospy.get_param('/coe_Ap_range', [0.0, 1.0])
+        self.coe_Bp_range = rospy.get_param('/coe_Bp_range', [0.0, 1.0])
+        self.coe_L_range = rospy.get_param('/coe_L_range', [0.0, 1.0])
+
         ## max time stamp of motion state in the best trajectory
         self.time_stamp_max = rospy.get_param('/time_stamp_max', 25.0) # seconds
         assert self.time_stamp_max > 0
@@ -52,12 +61,27 @@ class Utility(object):
         self.max_theta = dof_max[2]
 
         ## maximal velocity, linear and angular, both absolute
-        self.max_linear_v = rospy.get_param('/robot_info/max_speed_linear', 0.33)
+        self.max_linear_vx = rospy.get_param('/robot_info/max_speed_linear', 10.0)
+        self.max_linear_vy = rospy.get_param('/robot_info/max_speed_linear', 10.0)
         self.max_angular_v = rospy.get_param('/robot_info/max_speed_angular', 1.5708)
 
         ## maximal acceleration, linear and angular, both absolute
-        self.max_linear_a = rospy.get_param('/robot_info/max_acceleration_linear', 2.0)
-        self.max_angular_a = rospy.get_param('/robot_info/max_acceleration_angular', 1.0)
+        self.max_linear_ax = rospy.get_param('/robot_info/max_acceleration_linear', 10.0)
+        self.max_linear_ay = rospy.get_param('/robot_info/max_acceleration_linear', 10.0)
+        self.max_angular_a = rospy.get_param('/robot_info/max_acceleration_angular', 1.5708)
+
+        ## maximal velocity, linear and angular, both absolute
+        self.min_linear_vx = rospy.get_param('/robot_info/max_speed_linear', -10.0)
+        self.min_linear_vy = rospy.get_param('/robot_info/max_speed_linear', -10.0)
+        self.min_angular_v = rospy.get_param('/robot_info/max_speed_angular', -1.5708)
+
+        ## maximal acceleration, linear and angular, both absolute
+        self.min_linear_ax = rospy.get_param('/robot_info/max_acceleration_linear', -10.0)
+        self.min_linear_ay = rospy.get_param('/robot_info/max_acceleration_linear', -10.0)
+        self.min_angular_a = rospy.get_param('/robot_info/max_acceleration_angular', -1.5708)
+
+        self.min_time = -1.0
+        self.max_time = 1000.0
 
 
 
