@@ -1,7 +1,35 @@
 #include "evaluate.h"
 
 Evaluate::Evaluate() : orientation_infeasible_(0), T_norm_(50.0), A_norm_(PI), _1_D_norm_(1.0), coll_time_norm_(zero),
-                       last_T_weight_(-1.0), last_A_weight_(-1.0), last_D_weight_(-1.0), last_Q_coll_(-1.0), last_Q_kine_(-1.0) {}
+                       last_T_weight_(-1.0), last_A_weight_(-1.0), last_D_weight_(-1.0), last_Q_coll_(-1.0), last_Q_kine_(-1.0), 
+                       Ap(1.0), Bp(1.0), L(1.0) {}
+
+void Evaluate::set_ped_pose(geometry_msgs::Pose& pose_){
+  ped_pose = pose_;
+  // std::cout<< pose_.position.x << std::endl;
+}
+
+void Evaluate::set_robot_pose(geometry_msgs::Pose& pose_){
+  robot_pose = pose_;
+  // std::cout<< pose_.position.x << std::endl;
+}
+
+float Evaluate::get_dp(){
+  return sqrt(pow((robot_pose.position.x - ped_pose.position.x), 2) +
+                       pow((robot_pose.position.y - ped_pose.position.y), 2));
+  // std::cout<< dp << std::endl;
+}
+
+void Evaluate::get_np(){
+  float dp = get_dp();
+
+  np_.x = (robot_pose.position.x - ped_pose.position.x)/dp;
+  np_.y = (robot_pose.position.y - ped_pose.position.y)/dp;
+  
+  // return sqrt(pow((np_.x), 2) +
+  //                      pow((np_.y), 2));
+  // std::cout<< dp << std::endl;
+}
 
 void Evaluate::perform(ramp_msgs::EvaluationRequest& req, ramp_msgs::EvaluationResponse& res)
 {
@@ -215,6 +243,11 @@ void Evaluate::performFitness(ramp_msgs::RampTrajectory& trj, const double& offs
     A /= A_norm_;
     _1_D /= _1_D_norm_;
     
+    
+    Ap /= Ap_norm_;
+    Bp /= Bp_norm_;
+    L /= L_norm_;
+    
     //ROS_INFO("Normalized terms T: %f A: %f D: %f", T, A, D);
 
     // Weight terms
@@ -249,15 +282,63 @@ void Evaluate::performFitness(ramp_msgs::RampTrajectory& trj, const double& offs
       is_set_D = true;
     }
 
+        Ap_weight_ = 1.0;
+    if (!ros::param::get("/ramp/eval_weight_Ap", Ap_weight_)) {
+      // if fail to get the parameter
+      Ap_weight_ = 1.0; // set it to the default
+    }
+    static bool is_set_Ap = false;
+    if (!is_set_Ap) {
+      ros::param::set("/ramp/eval_weight_Ap", Ap_weight_);
+      is_set_Ap = true;
+    }
+
+    Bp_weight_ = 1.0;
+    if (!ros::param::get("/ramp/eval_weight_Bp", Bp_weight_)) {
+      // if fail to get the parameter
+      Bp_weight_ = 1.0; // set it to the default
+    }
+    static bool is_set_Bp = false;
+    if (!is_set_Bp) {
+      ros::param::set("/ramp/eval_weight_Bp", Bp_weight_);
+      is_set_Bp = true;
+    }
+
+    L_weight_ = 1.0;
+    if (!ros::param::get("/ramp/eval_weight_L", L_weight_)) {
+      // if fail to get the parameter
+      L_weight_ = 1.0; // set it to the default
+    }
+    static bool is_set_L = false;
+    if (!is_set_L) {
+      ros::param::set("/ramp/eval_weight_L", L_weight_);
+      is_set_L = true;
+    }
     // T *= T_weight_;
     // A *= A_weight_;
     // D *= D_weight_; // this is wrong! this is 1.0 / (D * D_weight_), but what we need is D * (1.0 / D_weight_)
     
     //ROS_INFO("Weighted terms T: %f A: %f D: %f", T, A, D);
-    
+    // Compute Interaction Force
+    double F = zero;
+    double fgoal = zero;
     // Compute overall cost
     double cost = zero;
-    cost += T_weight_ * T + A_weight_ * A + D_weight_ * _1_D;
+
+    // Get Euclidean distance of the ped from the robot
+    float dp = get_dp();
+    float rp = 3.0;
+    get_np();
+    result = 100000; 
+    double omega = L + (1-L)*(1 - np/2);
+    fgoal += k_weight_ * k ; //TODO: Add velocity term
+    float Fx = Ap_weight_*exp((rp- (dp_weight_* dp))/(Bp_weight_* Bp)) * omega *(-np_.x);
+    float Fy = Ap_weight_*exp((rp- (dp_weight_* dp))/(Bp_weight_* Bp)) * omega *(-np_.y);
+
+    F += sqrt(pow((Fx), 2) + pow((Fy), 2));
+    // F += Ap_weight_*exp((rp- (dp_weight_* dp))/(Bp_weight_* Bp)) * omega *(-np);
+
+    cost += T_weight_ * T + A_weight_ * A + D_weight_ * _1_D + F + fgoal;
     result = 1.0 / cost;
 
     // result = 100000; // must be larger than infeasible
@@ -327,15 +408,15 @@ void Evaluate::performFitness(ramp_msgs::RampTrajectory& trj, const double& offs
   }
 
   // if weights change, print them
-  if (T_weight_ != last_T_weight_ ||
-      A_weight_ != last_A_weight_ ||
-      D_weight_ != last_D_weight_ ||
+  if (Ap_weight_ != last_Ap_weight_ ||
+      Bp_weight_ != last_Bp_weight_ ||
+      L_weight_ != last_L_weight_ ||
       Q_coll_   != last_Q_coll_   ||
       Q_kine_   != last_Q_kine_) {
-        printf("weights have changed to: T = %.3lf, A = %.5lf, D = %.3lf, Qc = %.3lf, Qk = %.3lf\n",
-          T_weight_, A_weight_, D_weight_, Q_coll_, Q_kine_);
-        last_T_weight_ = T_weight_; last_A_weight_ = A_weight_; last_D_weight_ = D_weight_;
-        last_Q_coll_   = Q_coll_;   last_Q_kine_   = Q_kine_;
+        printf("weights have changed to: Ap = %.3lf, Bp = %.5lf, L = %.3lf, Qc = %.3lf, Qk = %.3lf\n",
+          Ap_weight_, Bp_weight_, L_weight_, Q_coll_, Q_kine_);
+        last_Ap_weight_ = Ap_weight_; last_Bp_weight_ = Bp_weight_; 
+        last_L_weight_ = L_weight_; last_Q_coll_   = Q_coll_;   last_Q_kine_   = Q_kine_;
       }
 
   // ROS_INFO("performFitness time: %f", (ros::Time::now() - t_start).toSec());
