@@ -20,6 +20,10 @@ import math
 from colorama import init as clr_ama_init
 from colorama import Fore
 clr_ama_init(autoreset = True)
+import itertools
+
+import tensorflow as tf 
+import datetime
 
 ## get directory
 rlpara_root = os.path.join(os.path.dirname(__file__), '../../')
@@ -63,16 +67,16 @@ class RampEnvSipd(gym.Env):
 
         self.a0 = 0.0
         self.a1 = 1.0
-        self.d0 = 0.0
-        self.d1 = 1.0
-        self.best_A = 0.10
-        self.best_D = 0.15
-        self.preset_A = 0.05
-        self.preset_D = 0.65
-        
-        self.action_space = spaces.Discrete(9) # 3 * 3 = 9
-        self.observation_space = spaces.Box(np.array([self.utility.min_x, self.utility.min_y, self.a0, self.d0]),
-                                            np.array([self.utility.max_x, self.utility.max_y, self.a1, self.d1])) # single motion state
+        self.b0 = 0.0
+        self.b1 = 1.0
+        self.l0 = 0.0
+        self.l1 = 1.0
+        self.best_Ap = 0.10
+        self.best_Bp = 0.10
+        self.best_L = 0.10
+        self.action_space = spaces.Discrete(27) # 3 * 3 = 9
+        self.observation_space = spaces.Box(np.array([self.utility.min_x, self.utility.min_y, self.utility.min_theta, self.utility.min_linear_vx, self.utility.min_linear_vy, self.utility.min_angular_v, self.utility.min_linear_ax, self.utility.min_linear_ay, self.utility.min_angular_a, self.utility.min_time]),
+                                            np.array([self.utility.max_x, self.utility.max_y, self.utility.max_theta, self.utility.max_linear_vx, self.utility.max_linear_vy, self.utility.max_angular_v, self.utility.max_linear_ax, self.utility.max_linear_ay, self.utility.max_angular_a, self.utility.max_time])) # single motion state
         self.best_traj = None
         self.best_t = None
         self.this_exe_info = None
@@ -83,9 +87,18 @@ class RampEnvSipd(gym.Env):
         self.one_exe_info_sub = rospy.Subscriber("ramp_collection_ramp_ob_one_run", RampObservationOneRunning,
                                                  self.oneExeInfoCallback)
 
-        self.setState(1.0, 0.45)
+        self.setState(1.0, 1.0, 1.0) # TODO: check state values (hyperparam?)
 
+#         config = tf.compat.v1.ConfigProto(allow_soft_placement=True)
+#         self.session = tf.compat.v1.InteractiveSession(config=config)
+#         if not os.path.exists('summaries'):
+#             print("Creating summaries folder ...")
+#             os.mkdir('summaries')
+#         if not os.path.exists(os.path.join('summaries','first')):
+#             os.mkdir(os.path.join('summaries','first'))
 
+#         self.summ_writer = tf.compat.v1.summary.FileWriter("/home/sapanostic/data/runs")
+#         self.step_i = 0
 
     def oneCycle(self, start_planner=False):
         """Wait for ready, start one execution and wait for its completion.
@@ -161,9 +174,10 @@ class RampEnvSipd(gym.Env):
         # coes = np.random.rand(2)
         # self.setState(coes[0], coes[1])
 
-        A = rospy.get_param('/ramp/eval_weight_A')
-        D = rospy.get_param('/ramp/eval_weight_D')
-        coes = np.array([A, D])
+        Ap = rospy.get_param('/ramp/eval_weight_Ap')
+        Bp = rospy.get_param('/ramp/eval_weight_Bp')
+        L = rospy.get_param('/ramp/eval_weight_L')
+        coes = np.array([Ap, Bp, L])
 
         self.oneCycle(start_planner=True)
         return self.getOb(), coes
@@ -180,61 +194,45 @@ class RampEnvSipd(gym.Env):
         ------
             (float): Delta A, D weight.
         """
-        if action == 0:
-            dA = 0
-            dD = 0
-        elif action == 1:
-            dA = 0
-            dD = 1
-        elif action == 2:
-            dA = 0
-            dD = 2
-        elif action == 3:
-            dA = 1
-            dD = 0
-        elif action == 4:
-            dA = 1
-            dD = 1
-        elif action == 5:
-            dA = 1
-            dD = 2
-        elif action == 6:
-            dA = 2
-            dD = 0
-        elif action == 7:
-            dA = 2
-            dD = 1
-        elif action == 8:
-            dA = 2
-            dD = 2
+        action_space_matrix = list(set(itertools.permutations([0,0,0,1,1,1,2,2,2], 3)))
+        dAp = action_space_matrix[action][0]
+        dBp = action_space_matrix[action][1]
+        dL = action_space_matrix[action][2]
 
-        dA = (dA - 1) * self.action_resolution
-        dD = (dD - 1) * self.action_resolution
+        dAp = (dAp - 1) * self.action_resolution
+        dBp = (dBp - 1) * self.action_resolution
+        dL = (dL - 1) * self.action_resolution               
 
-        return dA, dD
+        return dAp, dBp, dL
 
 
 
     def step(self, action):
         print('################################################################')
-        dA, dD = self.decodeAction(action)
+        dAp, dBp, dL = self.decodeAction(action)
 
         ## set the coefficients of RAMP
-        A = rospy.get_param('/ramp/eval_weight_A')
-        D = rospy.get_param('/ramp/eval_weight_D')
-        self.setState(A+dA, D+dD)
-
+        Ap = rospy.get_param('/ramp/eval_weight_Ap')
+        Bp = rospy.get_param('/ramp/eval_weight_Bp')
+        L = rospy.get_param('/ramp/eval_weight_L')
+        self.setState(Ap+dAp, Bp+dBp, L+dL)
+        self.step_i += 1
+        reward = self.getReward()
+        summary = tf.compat.v1.Summary(value=[tf.compat.v1.Summary.Value(tag="reward", simple_value=reward)])
+        self.summ_writer.add_summary(summary, global_step=self.step_i)
         self.oneCycle(start_planner=self.start_in_step)
         # Reward are for the whole path and its coefficients.
         return self.getOb(), self.getReward(), self.done, self.getInfo()
 
 
 
-    def setState(self, A, D):
-        A = np.clip(A, self.a0, self.a1)
-        D = np.clip(D, self.d0, self.d1)
-        rospy.set_param('/ramp/eval_weight_A', A.item())
-        rospy.set_param('/ramp/eval_weight_D', D.item())
+    def setState(self, A, D, L):
+        Ap = np.clip(Ap, self.a0, self.a1)
+        Bp = np.clip(Bp, self.b0, self.b1)
+        L = np.clip(L, self.l0, self.l1)
+        rospy.set_param('/ramp/eval_weight_Ap', Ap.item())
+        rospy.set_param('/ramp/eval_weight_Bp', Bp.item())
+        rospy.set_param('/ramp/eval_weight_L', L.item())
 
 
 
@@ -265,8 +263,9 @@ class RampEnvSipd(gym.Env):
 
         if reward > self.max_reward:
             self.max_reward = reward
-            self.best_A = rospy.get_param('/ramp/eval_weight_A')
-            self.best_D = rospy.get_param('/ramp/eval_weight_D')
+            self.best_Ap = rospy.get_param('/ramp/eval_weight_Ap')
+            self.best_Bp = rospy.get_param('/ramp/eval_weight_Bp')
+            self.best_L = rospy.get_param('/ramp/eval_weight_L')
 
         if self.done:
             reward += 30.0 # TODO: Remove this?
@@ -276,20 +275,57 @@ class RampEnvSipd(gym.Env):
 
 
     def getOb(self):
-        A = rospy.get_param('/ramp/eval_weight_A')
-        D = rospy.get_param('/ramp/eval_weight_D')
+            self.best_Ap = rospy.get_param('/ramp/eval_weight_Ap')
+            self.best_Bp = rospy.get_param('/ramp/eval_weight_Bp')
+            self.best_L = rospy.get_param('/ramp/eval_weight_L')
 
         if self.best_t is None or len(self.best_t.holonomic_path.points) < 2:
-            return np.array([[0.0, 0.0, A, D]])
+            return np.array([[0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0]])
 
         x1 = self.best_t.holonomic_path.points[1].motionState.positions[0]
         y1 = self.best_t.holonomic_path.points[1].motionState.positions[1]
-        ob = np.array([[x1, y1, A, D]])
+        th1 = self.best_t.holonomic_path.points[1].motionState.positions[2]
+        if self.best_t.holonomic_path.points[1].motionState.velocities is () or self.best_t.holonomic_path.points[1].motionState.accelerations is ():
+            vx1 = 0.0
+            vy1 = 0.0
+            vth1 = 0.0
+            ax1 = 0.0
+            ay1 = 0.0
+            ath1 = 0.0
+        else:
+            vx1 = self.best_t.holonomic_path.points[1].motionState.velocities[0]
+            vy1 = self.best_t.holonomic_path.points[1].motionState.velocities[1]
+            vth1 = self.best_t.holonomic_path.points[1].motionState.velocities[2]
+            ax1 = self.best_t.holonomic_path.points[1].motionState.accelerations[0]
+            ay1 = self.best_t.holonomic_path.points[1].motionState.accelerations[1]
+            ath1 = self.best_t.holonomic_path.points[1].motionState.accelerations[2]
+
+        time = self.best_t.holonomic_path.points[1].motionState.time
+
+        ob = np.array([[x1, y1, th1, vx1, vy1, vth1, ax1, ay1, ath1, time]])
         length = len(self.best_t.holonomic_path.points)
         for i in range(2, length):
             xi = self.best_t.holonomic_path.points[i].motionState.positions[0]
             yi = self.best_t.holonomic_path.points[i].motionState.positions[1]
-            ob = np.concatenate((ob, [[xi, yi, A, D]]))
+            thi = self.best_t.holonomic_path.points[i].motionState.positions[2]
+
+            if self.best_t.holonomic_path.points[i].motionState.velocities is () or self.best_t.holonomic_path.points[i].motionState.accelerations is ():
+                vxi = 0.0
+                vyi = 0.0
+                vthi = 0.0
+                axi = 0.0
+                ayi = 0.0
+                athi = 0.0
+            else:
+                vxi = self.best_t.holonomic_path.points[i].motionState.velocities[0]
+                vyi = self.best_t.holonomic_path.points[i].motionState.velocities[1]
+                vthi = self.best_t.holonomic_path.points[i].motionState.velocities[2]
+                axi = self.best_t.holonomic_path.points[i].motionState.accelerations[0]
+                ayi = self.best_t.holonomic_path.points[i].motionState.accelerations[1]
+                athi = self.best_t.holonomic_path.points[i].motionState.accelerations[2]
+
+            time = self.best_t.holonomic_path.points[i].motionState.time
+            ob = np.concatenate((ob, [[xi, yi, thi, vxi, vyi, vthi, axi, ayi, athi, time]]))
 
         return ob
 
