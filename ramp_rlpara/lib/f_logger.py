@@ -89,7 +89,7 @@ class RampRlLogger(object):
         if self.file_h.closed:
             print(Fore.RED + "No file opened!")
             return False
-
+            
         if self.col_size != len(values):
             print(Fore.RED + "Length of data frame is wrong!")
             return False

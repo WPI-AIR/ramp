@@ -1,6 +1,8 @@
 <?xml version="1.0" ?>
 <launch>
 
+<arg name="gui" default="true"/>
+
 <param name="use_sim_time" value="True"/>
 
 <!-- Start the costmap -->
@@ -11,7 +13,9 @@
 
 <!-- Start Gazebo simulation -->
 <!-- <include file="$(find ramp_launch)/launch/multi_obs.launch" /> -->
-<include file="$(find ramp_launch)/launch/my_turtlebot_world_empty.launch" />
+<include file="$(find ramp_launch)/launch/my_turtlebot_world_empty.launch">
+	<arg name="gui" value="$(arg gui)" />
+</include>	
 <!-- <include file="$(find ramp_launch)/launch/my_view_robot_costmap.launch" /> -->
 <!-- <include file="$(find ramp_launch)/launch/obstacle.launch" /> -->
 <!-- <include file="$(find ramp_launch)/launch/onebot_oneobs_world.launch" /> -->

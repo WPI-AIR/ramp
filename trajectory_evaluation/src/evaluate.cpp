@@ -28,7 +28,7 @@ void Evaluate::get_np(){
   
   // return sqrt(pow((np_.x), 2) +
   //                      pow((np_.y), 2));
-  // std::cout<< dp << std::endl;
+  // std::cout<< np_.x << std::endl;
 }
 
 void Evaluate::perform(ramp_msgs::EvaluationRequest& req, ramp_msgs::EvaluationResponse& res)
@@ -330,15 +330,23 @@ void Evaluate::performFitness(ramp_msgs::RampTrajectory& trj, const double& offs
     float rp = 3.0;
     get_np();
     result = 100000; 
-    double omega = L + (1-L)*(1 - np/2);
-    fgoal += k_weight_ * k ; //TODO: Add velocity term
-    float Fx = Ap_weight_*exp((rp- (dp_weight_* dp))/(Bp_weight_* Bp)) * omega *(-np_.x);
-    float Fy = Ap_weight_*exp((rp- (dp_weight_* dp))/(Bp_weight_* Bp)) * omega *(-np_.y);
+
+    std::vector<double> goal {5, 5, 0.784};
+    ros::param::get("robot_info/goal", goal);
+    float ex = goal[0] - robot_pose.position.x;
+    float ey = goal[1] - robot_pose.position.y;
+    float cos_phi = - (ex*np_.x + ey*np_.y)/sqrt(ex*ex + ey*ey); 
+
+    double omega = L_weight_ + (1-L_weight_)*(1 + cos_phi)/2;
+    float Fx = Ap_weight_*exp((rp- dp)/(Bp_weight_)) * omega *(-np_.x);
+    float Fy = Ap_weight_*exp((rp- dp)/(Bp_weight_)) * omega *(-np_.y);
 
     F += sqrt(pow((Fx), 2) + pow((Fy), 2));
+    ros::param::set("/ramp/Fint", F);
+
     // F += Ap_weight_*exp((rp- (dp_weight_* dp))/(Bp_weight_* Bp)) * omega *(-np);
 
-    cost += T_weight_ * T + A_weight_ * A + D_weight_ * _1_D + F + fgoal;
+    cost += T_weight_ * T + A_weight_ * A + D_weight_ * _1_D + F;
     result = 1.0 / cost;
 
     // result = 100000; // must be larger than infeasible

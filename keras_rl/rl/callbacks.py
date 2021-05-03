@@ -112,6 +112,7 @@ class TrainEpisodeLogger(Callback):
         # from each other.
         self.episode_start = {}
         self.observations = {}
+        self.coes = {}
         self.rewards = {}
         self.actions = {}
         self.metrics = {}
@@ -132,13 +133,15 @@ class TrainEpisodeLogger(Callback):
     def on_episode_begin(self, episode, logs):
         self.episode_start[episode] = timeit.default_timer()
         self.observations[episode] = []
+        self.coes[episode] = []
         self.rewards[episode] = []
         self.actions[episode] = []
         self.metrics[episode] = []
 
     def on_episode_end(self, episode, logs):
         duration = timeit.default_timer() - self.episode_start[episode]
-        episode_steps = len(self.observations[episode])
+        # episode_steps = len(self.observations[episode])
+        episode_steps = len(self.rewards[episode])
 
         # Format all metrics.
         metrics = np.array(self.metrics[episode])
@@ -188,6 +191,7 @@ class TrainEpisodeLogger(Callback):
         # Free up resources.
         del self.episode_start[episode]
         del self.observations[episode]
+        del self.coes[episode]
         del self.rewards[episode]
         del self.actions[episode]
         del self.metrics[episode]
@@ -211,6 +215,7 @@ class TrainEpisodeLogger(Callback):
     def on_step_end(self, step, logs):
         episode = logs['episode']
         self.observations[episode].append(logs['observation'])
+        self.coes[episode].append(logs['coes'])
         self.rewards[episode].append(logs['reward'])
         self.actions[episode].append(logs['action'])
         self.metrics[episode].append(logs['metrics'])
@@ -434,6 +439,7 @@ class TrainEpisodeLoggerSip(Callback):
         # from each other.
         self.episode_start = {}
         self.observations = {}
+        self.coes = {}
         self.rewards = {}
         self.actions = {}
         self.metrics = {}
@@ -442,13 +448,16 @@ class TrainEpisodeLoggerSip(Callback):
         self.mean_q_arr = []
         self.step_coes1 = []
         self.step_coes2 = []
+        self.step_coes3 = []
+        self.step_coes4 = []
         self.epi_steps_arr = []
         self.epi_r_arr = []
         self.step_r = []
         self.step_q = []
         self.step_loss = []
-        self.epi_A = []
-        self.epi_D = []
+        self.epi_Ap = []
+        self.epi_Bp = []
+        self.epi_L = []
 
     def on_train_begin(self, logs):
         self.train_start = timeit.default_timer()
@@ -462,13 +471,15 @@ class TrainEpisodeLoggerSip(Callback):
     def on_episode_begin(self, episode, logs):
         self.episode_start[episode] = timeit.default_timer()
         self.observations[episode] = []
+        self.coes[episode] = []
         self.rewards[episode] = []
         self.actions[episode] = []
         self.metrics[episode] = []
 
     def on_episode_end(self, episode, logs):
         duration = timeit.default_timer() - self.episode_start[episode]
-        episode_steps = len(self.observations[episode])
+        # episode_steps = len(self.observations[episode])
+        episode_steps = len(self.rewards[episode])
 
         # Format all metrics.
         metrics = np.array(self.metrics[episode])
@@ -518,6 +529,7 @@ class TrainEpisodeLoggerSip(Callback):
         # Free up resources.
         del self.episode_start[episode]
         del self.observations[episode]
+        del self.coes[episode]
         del self.rewards[episode]
         del self.actions[episode]
         del self.metrics[episode]
@@ -550,36 +562,47 @@ class TrainEpisodeLoggerSip(Callback):
         plt.xlabel('Episode')
         plt.ylabel('Episode Reward')
 
-        A = rospy.get_param('/ramp/eval_weight_A')
-        D = rospy.get_param('/ramp/eval_weight_D')
+        Ap = rospy.get_param('/ramp/eval_weight_Ap')
+        Bp = rospy.get_param('/ramp/eval_weight_Bp')
+        L = rospy.get_param('/ramp/eval_weight_L')
 
-        plt.figure(44)
-        self.epi_A.append(A)
-        epi_A_smoothed = pd.Series(self.epi_A).rolling(1, min_periods = 1).mean()
-        plt.plot(epi_A_smoothed)
-        plt.xlabel('Episode')
-        plt.ylabel('A')
+        # plt.figure(44)
+        self.epi_Ap.append(Ap)
+        epi_Ap_smoothed = pd.Series(self.epi_Ap).rolling(1, min_periods = 1).mean()
+        # plt.plot(epi_Ap_smoothed)
+        # plt.xlabel('Episode')
+        # plt.ylabel('A')
 
-        plt.figure(444)
-        self.epi_D.append(D)
-        epi_D_smoothed = pd.Series(self.epi_D).rolling(1, min_periods = 1).mean()
-        plt.plot(epi_D_smoothed)
-        plt.xlabel('Episode')
-        plt.ylabel('D')
+        # plt.figure(444)
+        self.epi_Bp.append(Bp)
+        epi_Bp_smoothed = pd.Series(self.epi_Bp).rolling(1, min_periods = 1).mean()
+        # plt.plot(epi_Bp_smoothed)
+        # plt.xlabel('Episode')
+        # plt.ylabel('Bp')
+
+        # plt.figure(4444)
+        self.epi_L.append(L)
+        epi_L_smoothed = pd.Series(self.epi_L).rolling(1, min_periods = 1).mean()
+        # plt.plot(epi_L_smoothed)
+        # plt.xlabel('Episode')
+        # plt.ylabel('L')
 
         plt.pause(0.0001)
 
     def on_step_end(self, step, logs):
         episode = logs['episode']
         self.observations[episode].append(logs['observation'])
+        self.coes[episode].append(logs['coes'])
         self.rewards[episode].append(logs['reward'])
         self.actions[episode].append(logs['action'])
         self.metrics[episode].append(logs['metrics'])
         self.step += 1
 
         self.step_r.append(logs['reward'])
-        self.step_coes1.append(logs['observation'][0][2])
-        self.step_coes2.append(logs['observation'][0][3])
+        self.step_coes1.append(logs['coes'][0])
+        self.step_coes2.append(logs['coes'][1])
+        self.step_coes3.append(logs['coes'][2])
+        self.step_coes4.append(logs['coes'][3])
         self.step_q.append(logs['metrics'][2])
         self.step_loss.append(logs['metrics'][0])
         if self.step % 10 == 0:
@@ -587,30 +610,43 @@ class TrainEpisodeLoggerSip(Callback):
             step_r_smoothed = pd.Series(self.step_r).rolling(40, min_periods = 40).mean()
             plt.plot(step_r_smoothed)
             plt.xlabel('Step')
-            plt.ylabel('Reward')
+            plt.ylabel('Step Reward')
 
-            plt.figure(6)
-            step_coes1_smoothed = pd.Series(self.step_coes1).rolling(40, min_periods = 40).mean()
-            plt.plot(step_coes1_smoothed)
+            # plt.figure(6)
+            # step_coes1_smoothed = pd.Series(self.step_coes1).rolling(40, min_periods = 40).mean()
+            # plt.plot(step_coes1_smoothed)
+            # plt.xlabel('Step')
+            # plt.ylabel('Ap')
+
+            # plt.figure(7)
+            # step_coes2_smoothed = pd.Series(self.step_coes2).rolling(40, min_periods = 40).mean()
+            # plt.plot(step_coes2_smoothed)
+            # plt.xlabel('Step')
+            # plt.ylabel('Bp')
+
+            # plt.figure(8)
+            # step_coes3_smoothed = pd.Series(self.step_coes3).rolling(40, min_periods = 40).mean()
+            # plt.plot(step_coes3_smoothed)
+            # plt.xlabel('Step')
+            # plt.ylabel('L')
+
+            plt.figure(9)
+            step_coes4_smoothed = pd.Series(self.step_coes4).rolling(40, min_periods = 40).mean()
+            plt.plot(step_coes4_smoothed)
             plt.xlabel('Step')
-            plt.ylabel('A')
+            plt.ylabel('F')
 
-            plt.figure(7)
-            step_coes2_smoothed = pd.Series(self.step_coes2).rolling(40, min_periods = 40).mean()
-            plt.plot(step_coes2_smoothed)
-            plt.xlabel('Step')
-            plt.ylabel('D')
-
-            plt.figure(8)
+            plt.figure(10)
             step_q_smoothed = pd.Series(self.step_q).rolling(40, min_periods = 40).mean()
             plt.plot(step_q_smoothed)
             plt.xlabel('Step')
             plt.ylabel('Mean Q')
 
-            plt.figure(9)
+            plt.figure(11)
             step_loss_smoothed = pd.Series(self.step_loss).rolling(40, min_periods = 40).mean()
             plt.plot(step_loss_smoothed)
             plt.xlabel('Step')
             plt.ylabel('Loss')
+
 
             plt.pause(0.0001)

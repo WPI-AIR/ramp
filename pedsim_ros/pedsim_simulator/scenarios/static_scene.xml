@@ -11,10 +11,12 @@
   <waypoint id="coffee_entry" x="4" y="0" r="0.2"/>
   <waypoint id="coffee_exit" x="0" y="4" r="0.2"/>
 
+  <waypoint id="static_pos" x="2.5" y="2.5" r="0.1"/>
+
   <waypoint id="robot_goal" x="10" y="10" r="2"/>
   <waypoint id="robot_start" x="0" y="0" r="2"/>
 
-  <queue id="info_desk" x="20" y="15" direction="0"/>
+  <queue id="info_desk" x="2.5" y="2.5" direction="0"/>
 
     <!--Agents-->
     <agent x="0" y="0" n="1" dx="0" dy="0" type="2">
@@ -23,10 +25,10 @@
     </agent>
 
     <!--AgentClusters-->
-    <agent x="3" y="1" n="1" dx="1" dy="1" type="0">
-        <addwaypoint id="coffee_entry"/>
-        <addwaypoint id="coffee_exit"/>
+    <agent x="2.5" y="2.5" n="1" dx="1" dy="1" type="0">
+        <addwaypoint id="static_pos"/>
     </agent>
+
 <!--     <agent x="7" y="5" n="5" dx="3" dy="3" type="1">
         <addqueue id="info_desk"/>
         <addwaypoint id="bookshop_exit"/>

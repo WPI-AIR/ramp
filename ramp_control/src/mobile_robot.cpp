@@ -12,8 +12,7 @@ const float timeNeededToTurn = 2.5;
 
 
 
-MobileRobot::MobileRobot() : restart_(false), num_(0), num_traveled_(0), k_dof_(3)  
-{ 
+MobileRobot::MobileRobot() : restart_(false), num_(0), num_traveled_(0), k_dof_(3){ 
   for(unsigned int i=0;i<k_dof_;i++)
   {
     motion_state_.positions.push_back(0);
@@ -214,7 +213,7 @@ void MobileRobot::calculateSpeedsAndTime () {
     // speeds_linear_.push_back(0.1  + sqrt( pow(vx,2)
     //                               + pow(vy,2) ));
 
-    speeds_linear_.push_back(0.2);
+    speeds_linear_.push_back(max_lin_speed);
 
     double w = utility_.findDistanceBetweenAngles(current.positions.at(2), next.positions.at(2)) / 0.1;
     // w *= 0.7;

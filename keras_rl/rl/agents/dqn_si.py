@@ -434,6 +434,7 @@ class DQNAgentSi(DQNAgent):
                 metrics = self.backwardSip(reward, observation, done)
                 episode_reward += reward
 
+                coes = env.getState()
                 step_logs = {
                     'action': action,
                     'observation': observation,
@@ -441,11 +442,25 @@ class DQNAgentSi(DQNAgent):
                     'metrics': metrics,
                     'episode': episode,
                     'info': accumulated_info,
+                    'coes': coes
                 }
                 callbacks.on_step_end(episode_step, step_logs)
                 episode_step += 1
                 self.step += 1
                 self.policy.change_tau(-0.0004)
+                env.setLoggingData(reward, coes, metrics[0], metrics[1], metrics[2], info['obs_dis'])
+
+                if logger is not None:
+                    logger.logOneFrame([self.step, coes[0], coes[1], coes[2],coes[3],
+                                reward, info['time'], info['obs_dis'],
+                                metrics[0], metrics[1], metrics[2]])
+
+                    # print('Step: {}\tAp: {:.2f}\tBp: {:.2f}\tL: {:.2f}\tReward: {:.2f}\tTime: {:.2f}\tDis: {:.2f}\tQ: {:.2f}'.format(
+                    #         self.step, coes[0], coes[1], coes[2], 
+                    #         reward, info['time'], info['obs_dis'],
+                    #         metrics[2]))
+
+                    logger.reOpen()
 
                 if verbose == 1 and self.step % log_interval == 0:
                     plt.figure(2)
@@ -457,17 +472,7 @@ class DQNAgentSi(DQNAgent):
                     print('coes: {}'.format(np.mean(coes)))
                     coes = []
 
-                if logger is not None:
-                    logger.logOneFrame([self.step, observation[0][2], observation[0][3],
-                                reward, info['time'], info['obs_dis'],
-                                metrics[0], metrics[1], metrics[2]])
 
-                    print('Step: {}\tA: {:.2f}\tD: {:.2f}\tReward: {:.2f}\tTime: {:.2f}\tDis: {:.2f}\tQ: {:.2f}'.format(
-                            self.step, observation[0][2], observation[0][3],
-                            reward, info['time'], info['obs_dis'],
-                            metrics[2]))
-
-                    logger.reOpen()
 
                 # if self.step % log_interval == 0:
                 #     result_str = ''

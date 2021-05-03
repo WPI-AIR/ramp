@@ -3,7 +3,7 @@
   <arg name="kbd_teleop" default="false"/>
   <arg name="rqt_teleop" default="true"/>
   <arg name="visualize" default="true"/>
-  <arg name="with_robot" default="true"/>
+  <arg name="with_robot" default="false"/>
   <arg name="scene" default="scene_1"/>
   <arg name="gui" default="true" />
   <arg name="simulation_factor" default="1.0"/> <!-- Speed up -->
@@ -16,6 +16,8 @@
 
     <arg name="scene_file" value="$(find pedsim_simulator)scenarios/scene_1.xml" if="$(eval scene=='scene_1')"/>
     <arg name="scene_file" value="$(find pedsim_simulator)scenarios/parallel.xml" if="$(eval scene=='parallel')"/>
+    <arg name="scene_file" value="$(find pedsim_simulator)scenarios/static_scene.xml" if="$(eval scene=='static')"/>
+
     <arg name="with_robot" value="$(arg with_robot)"/>
     <arg name="simulation_factor" value="$(arg simulation_factor)"/>
     <arg name="update_rate" value="$(arg update_rate)"/>

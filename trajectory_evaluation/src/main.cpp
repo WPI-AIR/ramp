@@ -8,6 +8,7 @@
 #include <ros/package.h>
 using namespace std::chrono;
 
+#include "pedsim_msgs/AgentStates.h"
 Evaluate ev;
 Utility u;
 bool received_ob = false;
@@ -17,6 +18,16 @@ int count_multiple = 0;
 int count_single = 0;
 
 std::vector<double> dof_min, dof_max;
+
+void pedSimCallback(const pedsim_msgs::AgentStates::ConstPtr msg){
+  geometry_msgs::Pose pedPose = msg->agent_states[0].pose;
+  ev.set_ped_pose(pedPose);
+}
+
+void robotCallback(const nav_msgs::Odometry::ConstPtr msg){
+  geometry_msgs::Pose robotPose = msg->pose.pose;
+  ev.set_robot_pose(robotPose);
+}
 
 /** Srv callback to evaluate a trajectory */
 bool handleRequest(ramp_msgs::EvaluationSrv::Request& reqs,
@@ -261,6 +272,9 @@ int main(int argc, char** argv) {
   // Advertise Service
   ros::ServiceServer service = handle.advertiseService("trajectory_evaluation", handleRequest);
 
+  // Subscribe Pedsim positions 
+  ros::Subscriber pedSimSub = handle.subscribe("/pedsim_simulator/simulated_agents", 1000, pedSimCallback);
+  ros::Subscriber robotSub = handle.subscribe("/odom", 1000, robotCallback);
 
   /*
    * Start spinning

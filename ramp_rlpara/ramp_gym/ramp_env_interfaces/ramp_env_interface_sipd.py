@@ -16,6 +16,7 @@ from std_msgs.msg import Float64MultiArray
 from std_msgs.msg import Empty
 from ramp_msgs.msg import RampTrajectory
 from ramp_msgs.msg import RampObservationOneRunning
+from pedsim_msgs.msg import AgentStates
 import math
 from colorama import init as clr_ama_init
 from colorama import Fore
@@ -52,7 +53,11 @@ class RampEnvSipd(gym.Env):
             print(Fore.RED + "Unused this_exe_info is overlaped!")
         self.this_exe_info = data
 
-
+    def pesimCallback(self, data):
+        fx = data.agent_states[0].forces.social_force.x    
+        fy = data.agent_states[0].forces.social_force.y
+        self.pedforce = np.sqrt(fx*fx + fy*fy)
+        
 
     def __init__(self, name='ramp_sipd'):
         self.name = name
@@ -80,25 +85,28 @@ class RampEnvSipd(gym.Env):
         self.best_traj = None
         self.best_t = None
         self.this_exe_info = None
-
+        self.pedforce = 0
         self.best_traj_sub = rospy.Subscriber("bestTrajec", RampTrajectory,
                                                  self.bestTrajCallback)
 
         self.one_exe_info_sub = rospy.Subscriber("ramp_collection_ramp_ob_one_run", RampObservationOneRunning,
                                                  self.oneExeInfoCallback)
 
+        self.pedsim_sub = rospy.Subscriber("pedsim_simulator/simulated_agents",  AgentStates,
+                                                 self.pesimCallback)
+
         self.setState(1.0, 1.0, 1.0) # TODO: check state values (hyperparam?)
 
-#         config = tf.compat.v1.ConfigProto(allow_soft_placement=True)
-#         self.session = tf.compat.v1.InteractiveSession(config=config)
-#         if not os.path.exists('summaries'):
-#             print("Creating summaries folder ...")
-#             os.mkdir('summaries')
-#         if not os.path.exists(os.path.join('summaries','first')):
-#             os.mkdir(os.path.join('summaries','first'))
+        config = tf.compat.v1.ConfigProto(allow_soft_placement=True)
+        self.session = tf.compat.v1.InteractiveSession(config=config)
+        if not os.path.exists('summaries'):
+            print("Creating summaries folder ...")
+            os.mkdir('summaries')
+        if not os.path.exists(os.path.join('summaries','first')):
+            os.mkdir(os.path.join('summaries','first'))
 
-#         self.summ_writer = tf.compat.v1.summary.FileWriter("/home/sapanostic/data/runs")
-#         self.step_i = 0
+        self.summ_writer = tf.compat.v1.summary.FileWriter("/home/sapanostic/data/runs")
+        self.step_i = 0
 
     def oneCycle(self, start_planner=False):
         """Wait for ready, start one execution and wait for its completion.
@@ -132,7 +140,7 @@ class RampEnvSipd(gym.Env):
 
             cur_time = rospy.get_rostime()
             has_waited_for = cur_time.to_sec() - start_waiting_time.to_sec()
-            if has_waited_for >= 20.0: # overtime
+            if has_waited_for >= 30.0: # overtime
                 print("Long time no response!")
                 print("Wait environment get ready......")
 
@@ -217,23 +225,20 @@ class RampEnvSipd(gym.Env):
         L = rospy.get_param('/ramp/eval_weight_L')
         self.setState(Ap+dAp, Bp+dBp, L+dL)
         self.step_i += 1
-        reward = self.getReward()
-        summary = tf.compat.v1.Summary(value=[tf.compat.v1.Summary.Value(tag="reward", simple_value=reward)])
-        self.summ_writer.add_summary(summary, global_step=self.step_i)
+        
         self.oneCycle(start_planner=self.start_in_step)
         # Reward are for the whole path and its coefficients.
         return self.getOb(), self.getReward(), self.done, self.getInfo()
 
 
 
-    def setState(self, A, D, L):
+    def setState(self, Ap, Bp, L):
         Ap = np.clip(Ap, self.a0, self.a1)
         Bp = np.clip(Bp, self.b0, self.b1)
         L = np.clip(L, self.l0, self.l1)
         rospy.set_param('/ramp/eval_weight_Ap', Ap.item())
         rospy.set_param('/ramp/eval_weight_Bp', Bp.item())
         rospy.set_param('/ramp/eval_weight_L', L.item())
-
 
 
     def getReward(self):
@@ -275,9 +280,9 @@ class RampEnvSipd(gym.Env):
 
 
     def getOb(self):
-            self.best_Ap = rospy.get_param('/ramp/eval_weight_Ap')
-            self.best_Bp = rospy.get_param('/ramp/eval_weight_Bp')
-            self.best_L = rospy.get_param('/ramp/eval_weight_L')
+        self.best_Ap = rospy.get_param('/ramp/eval_weight_Ap')
+        self.best_Bp = rospy.get_param('/ramp/eval_weight_Bp')
+        self.best_L = rospy.get_param('/ramp/eval_weight_L')
 
         if self.best_t is None or len(self.best_t.holonomic_path.points) < 2:
             return np.array([[0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0]])
@@ -338,4 +343,36 @@ class RampEnvSipd(gym.Env):
 
 
     def getState(self):
-        return 0.0
+        Ap = rospy.get_param('/ramp/eval_weight_Ap')
+        Bp = rospy.get_param('/ramp/eval_weight_Bp')
+        L = rospy.get_param('/ramp/eval_weight_L')
+        F = self.pedforce
+        return [Ap, Bp, L, F] 
+
+    def setLoggingData(self, reward, coes, loss, mae, q, obs_dis):
+        summary = tf.compat.v1.Summary(value=[tf.compat.v1.Summary.Value(tag="reward", simple_value=reward)])
+        self.summ_writer.add_summary(summary, global_step=self.step_i)
+
+        summary = tf.compat.v1.Summary(value=[tf.compat.v1.Summary.Value(tag="Ap", simple_value=coes[0])])
+        self.summ_writer.add_summary(summary, global_step=self.step_i)
+
+        summary = tf.compat.v1.Summary(value=[tf.compat.v1.Summary.Value(tag="Bp", simple_value=coes[1])])
+        self.summ_writer.add_summary(summary, global_step=self.step_i)
+
+        summary = tf.compat.v1.Summary(value=[tf.compat.v1.Summary.Value(tag="L", simple_value=coes[2])])
+        self.summ_writer.add_summary(summary, global_step=self.step_i)
+
+        summary = tf.compat.v1.Summary(value=[tf.compat.v1.Summary.Value(tag="Loss", simple_value=loss)])
+        self.summ_writer.add_summary(summary, global_step=self.step_i)
+
+        summary = tf.compat.v1.Summary(value=[tf.compat.v1.Summary.Value(tag="mae", simple_value=mae)])
+        self.summ_writer.add_summary(summary, global_step=self.step_i)
+
+        summary = tf.compat.v1.Summary(value=[tf.compat.v1.Summary.Value(tag="q", simple_value=q)])
+        self.summ_writer.add_summary(summary, global_step=self.step_i)
+
+        summary = tf.compat.v1.Summary(value=[tf.compat.v1.Summary.Value(tag="obs_dis", simple_value=obs_dis)])
+        self.summ_writer.add_summary(summary, global_step=self.step_i)
+
+        
+

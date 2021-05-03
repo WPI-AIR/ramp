@@ -90,6 +90,12 @@ int main(int argc, char** argv)
 
   // Get the start and goal vectors
   std::vector<float> p_start;
+  float max_lin_speed = 0;
+  if(handle.hasParam("robot_info/max_speed_linear"))
+  { 
+    handle.getParam("robot_info/max_speed_linear", max_lin_speed);
+    robot.max_lin_speed = max_lin_speed;
+  }
   if(handle.hasParam("robot_info/start"))
   {
     handle.getParam("robot_info/start", p_start);
