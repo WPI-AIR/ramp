@@ -451,7 +451,7 @@ class DQNAgentSi(DQNAgent):
                 env.setLoggingData(reward, coes, metrics[0], metrics[1], metrics[2], info['obs_dis'])
 
                 if logger is not None:
-                    logger.logOneFrame([self.step, coes[0], coes[1], coes[2],coes[3],
+                    logger.logOneFrame([self.step, coes[0], coes[1], coes[2],coes[3],coes[4],coes[5],
                                 reward, info['time'], info['obs_dis'],
                                 metrics[0], metrics[1], metrics[2]])
 

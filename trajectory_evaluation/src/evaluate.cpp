@@ -15,8 +15,10 @@ void Evaluate::set_robot_pose(geometry_msgs::Pose& pose_){
 }
 
 float Evaluate::get_dp(){
-  return sqrt(pow((robot_pose.position.x - ped_pose.position.x), 2) +
-                       pow((robot_pose.position.y - ped_pose.position.y), 2));
+  // return sqrt(pow((robot_pose.position.x - ped_pose.position.x), 2) +
+  //                      pow((robot_pose.position.y - ped_pose.position.y), 2));
+  return sqrt(pow((robot_pose.position.x - 4.5), 2) +
+                     pow((robot_pose.position.y - 4.5), 2));
   // std::cout<< dp << std::endl;
 }
 
@@ -327,7 +329,7 @@ void Evaluate::performFitness(ramp_msgs::RampTrajectory& trj, const double& offs
 
     // Get Euclidean distance of the ped from the robot
     float dp = get_dp();
-    float rp = 3.0;
+    float rp = 2.0;
     get_np();
     result = 100000; 
 
@@ -337,16 +339,25 @@ void Evaluate::performFitness(ramp_msgs::RampTrajectory& trj, const double& offs
     float ey = goal[1] - robot_pose.position.y;
     float cos_phi = - (ex*np_.x + ey*np_.y)/sqrt(ex*ex + ey*ey); 
 
-    double omega = L_weight_ + (1-L_weight_)*(1 + cos_phi)/2;
-    float Fx = Ap_weight_*exp((rp- dp)/(Bp_weight_)) * omega *(-np_.x);
-    float Fy = Ap_weight_*exp((rp- dp)/(Bp_weight_)) * omega *(-np_.y);
+    double omega = L_weight_ + (1-L_weight_)*(1 + cos_phi)/2; // = 1 - (0.5to1)L
 
-    F += sqrt(pow((Fx), 2) + pow((Fy), 2));
+    // float Fx = Ap_weight_*exp((rp- dp)/(Bp_weight_)) * omega *(-np_.x);
+    // float Fy = Ap_weight_*exp((rp- dp)/(Bp_weight_)) * omega *(-np_.y);
+
+    float Fx = Ap_weight_*exp((rp- min_obs_dis)/(Bp_weight_)) * omega *(-np_.x);
+    float Fy = Ap_weight_*exp((rp- min_obs_dis)/(Bp_weight_)) * omega *(-np_.y);
+
+    F += 10*sqrt(pow((Fx), 2) + pow((Fy), 2));
+    if (F>10)
+      F = 10;
+
     ros::param::set("/ramp/Fint", F);
+    ros::param::set("/ramp/dp_obs", dp);
 
+    std::cout << "dp : " << dp << std::endl;  
     // F += Ap_weight_*exp((rp- (dp_weight_* dp))/(Bp_weight_* Bp)) * omega *(-np);
-
-    cost += T_weight_ * T + A_weight_ * A + D_weight_ * _1_D + F;
+    std::cout << "T_weight_ * T: " << T_weight_ * T << " A_weight_ * A: " << A_weight_ * A << " F: " << F << " Ap_weight_: " << Ap_weight_ << std::endl;  
+    cost += T_weight_ * T + A_weight_ * A + 0*D_weight_ * _1_D + F;
     result = 1.0 / cost;
 
     // result = 100000; // must be larger than infeasible

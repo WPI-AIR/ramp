@@ -450,6 +450,8 @@ class TrainEpisodeLoggerSip(Callback):
         self.step_coes2 = []
         self.step_coes3 = []
         self.step_coes4 = []
+        self.step_coes5 = []
+        self.step_coes6 = []
         self.epi_steps_arr = []
         self.epi_r_arr = []
         self.step_r = []
@@ -603,6 +605,8 @@ class TrainEpisodeLoggerSip(Callback):
         self.step_coes2.append(logs['coes'][1])
         self.step_coes3.append(logs['coes'][2])
         self.step_coes4.append(logs['coes'][3])
+        self.step_coes5.append(logs['coes'][4])
+        self.step_coes6.append(logs['coes'][5])
         self.step_q.append(logs['metrics'][2])
         self.step_loss.append(logs['metrics'][0])
         if self.step % 10 == 0:
@@ -612,37 +616,52 @@ class TrainEpisodeLoggerSip(Callback):
             plt.xlabel('Step')
             plt.ylabel('Step Reward')
 
-            # plt.figure(6)
-            # step_coes1_smoothed = pd.Series(self.step_coes1).rolling(40, min_periods = 40).mean()
-            # plt.plot(step_coes1_smoothed)
-            # plt.xlabel('Step')
-            # plt.ylabel('Ap')
+            plt.figure(6)
+            step_coes1_smoothed = pd.Series(self.step_coes1).rolling(40, min_periods = 40).mean()
+            plt.plot(step_coes1_smoothed)
+            plt.xlabel('Step')
+            plt.ylabel('Ap')
 
-            # plt.figure(7)
-            # step_coes2_smoothed = pd.Series(self.step_coes2).rolling(40, min_periods = 40).mean()
-            # plt.plot(step_coes2_smoothed)
-            # plt.xlabel('Step')
-            # plt.ylabel('Bp')
+            plt.figure(7)
+            step_coes2_smoothed = pd.Series(self.step_coes2).rolling(40, min_periods = 40).mean()
+            plt.plot(step_coes2_smoothed)
+            plt.xlabel('Step')
+            plt.ylabel('Bp')
 
-            # plt.figure(8)
-            # step_coes3_smoothed = pd.Series(self.step_coes3).rolling(40, min_periods = 40).mean()
-            # plt.plot(step_coes3_smoothed)
-            # plt.xlabel('Step')
-            # plt.ylabel('L')
+            plt.figure(8)
+            step_coes3_smoothed = pd.Series(self.step_coes3).rolling(40, min_periods = 40).mean()
+            plt.plot(step_coes3_smoothed)
+            plt.xlabel('Step')
+            plt.ylabel('L')
 
             plt.figure(9)
             step_coes4_smoothed = pd.Series(self.step_coes4).rolling(40, min_periods = 40).mean()
-            plt.plot(step_coes4_smoothed)
+            # plt.plot(step_coes4_smoothed)
+            plt.plot(self.step_coes4)
             plt.xlabel('Step')
             plt.ylabel('F')
 
             plt.figure(10)
+            step_coes5_smoothed = pd.Series(self.step_coes5).rolling(40, min_periods = 40).mean()
+            # plt.plot(step_coes5_smoothed)
+            plt.plot(self.step_coes5)
+            plt.xlabel('Step')
+            plt.ylabel('dp_obs')
+
+            plt.figure(11)
+            # step_coes6_smoothed = pd.Series(self.step_coes6).rolling(40, min_periods = 40).mean()
+            # plt.plot(step_coes6)
+            plt.plot(self.step_coes6)
+            plt.xlabel('Step')
+            plt.ylabel('min_obs_dis')
+
+            plt.figure(12)
             step_q_smoothed = pd.Series(self.step_q).rolling(40, min_periods = 40).mean()
             plt.plot(step_q_smoothed)
             plt.xlabel('Step')
             plt.ylabel('Mean Q')
 
-            plt.figure(11)
+            plt.figure(13)
             step_loss_smoothed = pd.Series(self.step_loss).rolling(40, min_periods = 40).mean()
             plt.plot(step_loss_smoothed)
             plt.xlabel('Step')

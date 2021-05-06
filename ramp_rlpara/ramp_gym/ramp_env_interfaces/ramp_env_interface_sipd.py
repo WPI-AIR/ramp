@@ -70,9 +70,9 @@ class RampEnvSipd(gym.Env):
         self.start_in_step = False
         self.max_reward = -999.9
 
-        self.a0 = 0.0
-        self.a1 = 1.0
-        self.b0 = 0.0
+        self.a0 = 1.0
+        self.a1 = 2.0
+        self.b0 = 0.1
         self.b1 = 1.0
         self.l0 = 0.0
         self.l1 = 1.0
@@ -140,7 +140,7 @@ class RampEnvSipd(gym.Env):
 
             cur_time = rospy.get_rostime()
             has_waited_for = cur_time.to_sec() - start_waiting_time.to_sec()
-            if has_waited_for >= 30.0: # overtime
+            if has_waited_for >= 40.0: # overtime
                 print("Long time no response!")
                 print("Wait environment get ready......")
 
@@ -223,6 +223,12 @@ class RampEnvSipd(gym.Env):
         Ap = rospy.get_param('/ramp/eval_weight_Ap')
         Bp = rospy.get_param('/ramp/eval_weight_Bp')
         L = rospy.get_param('/ramp/eval_weight_L')
+
+        if ((Ap+dAp)<=0):
+            Ap = dAp
+        if ((Bp+dBp)<=0):
+            Bp = dBp    
+        
         self.setState(Ap+dAp, Bp+dBp, L+dL)
         self.step_i += 1
         
@@ -254,26 +260,40 @@ class RampEnvSipd(gym.Env):
         # reward = -1.0
 
         # Third
+        reward = 0.0
+        obs_cost = 0
         if self.best_t is None:
             reward = 0.0
         else:
-            orien_cost = self.best_t.orien_fitness
+            dp_obs = rospy.get_param('/ramp/dp_obs')
+            if self.best_t.min_obs_dis < 2.0:
+                obs_cost = -10*np.exp(2.0 - self.best_t.min_obs_dis) # order of -27 
+                reward += obs_cost
 
-            if self.best_t.obs_fitness < 0.1:
-                obs_cost = 1.25
-            else:
-                obs_cost = 1.0 / self.best_t.obs_fitness
+            reward += 10-0.2*self.best_t.time_fitness 
+            print("obs: ", self.best_t.min_obs_dis, "time: ", -self.best_t.time_fitness)
+            rospy.set_param('/ramp/min_obs_dis', self.best_t.min_obs_dis)
+            # print("fitness: ", self.best_t.fitness)
+            # print("min_obs_dis: ", self.best_t.min_obs_dis)
+            # print("time_fitness: ", self.best_t.time_fitness)
+            # print("orien_fitness: ", self.best_t.orien_fitness)
+            # print("obs_fitness: ", self.best_t.obs_fitness)
+            # print("t_start.secs: ", self.best_t.t_start.secs)
+        #     orien_cost = self.best_t.orien_fitness
 
-            reward = -obs_cost / 5.0
+        #     if self.best_t.obs_fitness < 0.1:
+        #         obs_cost = 1.25
+        #     else:
+        #         obs_cost = 1.0 / self.best_t.obs_fitness
 
-        if reward > self.max_reward:
-            self.max_reward = reward
-            self.best_Ap = rospy.get_param('/ramp/eval_weight_Ap')
-            self.best_Bp = rospy.get_param('/ramp/eval_weight_Bp')
-            self.best_L = rospy.get_param('/ramp/eval_weight_L')
+        #     reward = -obs_cost / 5.0
+
+        # if reward > self.max_reward:
+        #     self.max_reward = reward
 
         if self.done:
-            reward += 30.0 # TODO: Remove this?
+            print("Reached Goal, Getting BIG REWARD")
+            reward += 100.0 # TODO: Remove this?
 
         return reward
 
@@ -346,8 +366,11 @@ class RampEnvSipd(gym.Env):
         Ap = rospy.get_param('/ramp/eval_weight_Ap')
         Bp = rospy.get_param('/ramp/eval_weight_Bp')
         L = rospy.get_param('/ramp/eval_weight_L')
-        F = self.pedforce
-        return [Ap, Bp, L, F] 
+        # F = self.pedforce
+        F = rospy.get_param('/ramp/Fint')
+        dp_obs = rospy.get_param('/ramp/dp_obs')
+        min_obs_dis = rospy.get_param('/ramp/min_obs_dis')
+        return [Ap, Bp, L, F, dp_obs, min_obs_dis] 
 
     def setLoggingData(self, reward, coes, loss, mae, q, obs_dis):
         summary = tf.compat.v1.Summary(value=[tf.compat.v1.Summary.Value(tag="reward", simple_value=reward)])

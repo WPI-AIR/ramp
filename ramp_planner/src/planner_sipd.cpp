@@ -246,8 +246,10 @@ void Planner::sensingCycleCallback(const ramp_msgs::ObstacleList& msg)
   // obs1x = boost::algorithm::clamp(obs1x, 0.0, x_max);
   // obs1y = x_max - obs1x;
   ramp_msgs::Obstacle obs1;
-  obs1.ob_ms.positions.push_back(ped_pose.position.x);
-  obs1.ob_ms.positions.push_back(ped_pose.position.y);
+  // obs1.ob_ms.positions.push_back(ped_pose.position.x);
+  // obs1.ob_ms.positions.push_back(ped_pose.position.y);
+  obs1.ob_ms.positions.push_back(4.5);
+  obs1.ob_ms.positions.push_back(4.5);
   obs1.ob_ms.positions.push_back(0.0);
   obs1.ob_ms.velocities.push_back(0.0);
   obs1.ob_ms.velocities.push_back(0.0);
