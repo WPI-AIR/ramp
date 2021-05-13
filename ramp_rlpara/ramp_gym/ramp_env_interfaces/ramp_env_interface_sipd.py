@@ -16,6 +16,7 @@ from std_msgs.msg import Float64MultiArray
 from std_msgs.msg import Empty
 from ramp_msgs.msg import RampTrajectory
 from ramp_msgs.msg import RampObservationOneRunning
+from pedsim_msgs.msg import AgentStates
 import math
 from colorama import init as clr_ama_init
 from colorama import Fore
@@ -52,7 +53,11 @@ class RampEnvSipd(gym.Env):
             print(Fore.RED + "Unused this_exe_info is overlaped!")
         self.this_exe_info = data
 
-
+    def pesimCallback(self, data):
+        fx = data.agent_states[0].forces.social_force.x    
+        fy = data.agent_states[0].forces.social_force.y
+        self.pedforce = np.sqrt(fx*fx + fy*fy)
+        
 
     def __init__(self, name='ramp_sipd'):
         self.name = name
@@ -65,9 +70,9 @@ class RampEnvSipd(gym.Env):
         self.start_in_step = False
         self.max_reward = -999.9
 
-        self.a0 = 0.0
-        self.a1 = 1.0
-        self.b0 = 0.0
+        self.a0 = 0.1
+        self.a1 = 2.0
+        self.b0 = 0.1
         self.b1 = 1.0
         self.l0 = 0.0
         self.l1 = 1.0
@@ -80,25 +85,28 @@ class RampEnvSipd(gym.Env):
         self.best_traj = None
         self.best_t = None
         self.this_exe_info = None
-
+        self.pedforce = 0
         self.best_traj_sub = rospy.Subscriber("bestTrajec", RampTrajectory,
                                                  self.bestTrajCallback)
 
         self.one_exe_info_sub = rospy.Subscriber("ramp_collection_ramp_ob_one_run", RampObservationOneRunning,
                                                  self.oneExeInfoCallback)
 
+        self.pedsim_sub = rospy.Subscriber("pedsim_simulator/simulated_agents",  AgentStates,
+                                                 self.pesimCallback)
+
         self.setState(1.0, 1.0, 1.0) # TODO: check state values (hyperparam?)
 
-#         config = tf.compat.v1.ConfigProto(allow_soft_placement=True)
-#         self.session = tf.compat.v1.InteractiveSession(config=config)
-#         if not os.path.exists('summaries'):
-#             print("Creating summaries folder ...")
-#             os.mkdir('summaries')
-#         if not os.path.exists(os.path.join('summaries','first')):
-#             os.mkdir(os.path.join('summaries','first'))
+        config = tf.compat.v1.ConfigProto(allow_soft_placement=True)
+        self.session = tf.compat.v1.InteractiveSession(config=config)
+        if not os.path.exists('summaries'):
+            print("Creating summaries folder ...")
+            os.mkdir('summaries')
+        if not os.path.exists(os.path.join('summaries','first')):
+            os.mkdir(os.path.join('summaries','first'))
 
-#         self.summ_writer = tf.compat.v1.summary.FileWriter("/home/sapanostic/data/runs")
-#         self.step_i = 0
+        self.summ_writer = tf.compat.v1.summary.FileWriter("/home/sapanostic/data/runs")
+        self.step_i = 0
 
     def oneCycle(self, start_planner=False):
         """Wait for ready, start one execution and wait for its completion.
@@ -132,7 +140,7 @@ class RampEnvSipd(gym.Env):
 
             cur_time = rospy.get_rostime()
             has_waited_for = cur_time.to_sec() - start_waiting_time.to_sec()
-            if has_waited_for >= 20.0: # overtime
+            if has_waited_for >= 100.0: # overtime
                 print("Long time no response!")
                 print("Wait environment get ready......")
 
@@ -148,7 +156,7 @@ class RampEnvSipd(gym.Env):
                 print("Wait plan complete......")
 
         print("A plan completes!")
-        time.sleep(0.1)
+        # time.sleep(0.1)
         self.best_t = self.best_traj # Store
         if self.this_exe_info is not None:
             self.done = self.this_exe_info.done
@@ -214,26 +222,24 @@ class RampEnvSipd(gym.Env):
         ## set the coefficients of RAMP
         Ap = rospy.get_param('/ramp/eval_weight_Ap')
         Bp = rospy.get_param('/ramp/eval_weight_Bp')
-        L = rospy.get_param('/ramp/eval_weight_L')
+        L = rospy.get_param('/ramp/eval_weight_L')  
+        
         self.setState(Ap+dAp, Bp+dBp, L+dL)
         self.step_i += 1
-        reward = self.getReward()
-        summary = tf.compat.v1.Summary(value=[tf.compat.v1.Summary.Value(tag="reward", simple_value=reward)])
-        self.summ_writer.add_summary(summary, global_step=self.step_i)
+        
         self.oneCycle(start_planner=self.start_in_step)
         # Reward are for the whole path and its coefficients.
         return self.getOb(), self.getReward(), self.done, self.getInfo()
 
 
 
-    def setState(self, A, D, L):
+    def setState(self, Ap, Bp, L):
         Ap = np.clip(Ap, self.a0, self.a1)
         Bp = np.clip(Bp, self.b0, self.b1)
         L = np.clip(L, self.l0, self.l1)
         rospy.set_param('/ramp/eval_weight_Ap', Ap.item())
         rospy.set_param('/ramp/eval_weight_Bp', Bp.item())
         rospy.set_param('/ramp/eval_weight_L', L.item())
-
 
 
     def getReward(self):
@@ -249,35 +255,49 @@ class RampEnvSipd(gym.Env):
         # reward = -1.0
 
         # Third
+        reward = 0.0
+        obs_cost = 0
         if self.best_t is None:
             reward = 0.0
         else:
-            orien_cost = self.best_t.orien_fitness
+            dp_obs = rospy.get_param('/ramp/dp_obs')
+            if self.best_t.min_obs_dis < 2.0:
+                obs_cost = -10*np.exp(2.0 - self.best_t.min_obs_dis) # order of -27 
+                reward += obs_cost
 
-            if self.best_t.obs_fitness < 0.1:
-                obs_cost = 1.25
-            else:
-                obs_cost = 1.0 / self.best_t.obs_fitness
+            reward += 10-0.2*self.best_t.time_fitness 
+            print("obs: ", self.best_t.min_obs_dis, "time: ", -self.best_t.time_fitness)
+            rospy.set_param('/ramp/min_obs_dis', self.best_t.min_obs_dis)
+            # print("fitness: ", self.best_t.fitness)
+            # print("min_obs_dis: ", self.best_t.min_obs_dis)
+            # print("time_fitness: ", self.best_t.time_fitness)
+            # print("orien_fitness: ", self.best_t.orien_fitness)
+            # print("obs_fitness: ", self.best_t.obs_fitness)
+            # print("t_start.secs: ", self.best_t.t_start.secs)
+        #     orien_cost = self.best_t.orien_fitness
 
-            reward = -obs_cost / 5.0
+        #     if self.best_t.obs_fitness < 0.1:
+        #         obs_cost = 1.25
+        #     else:
+        #         obs_cost = 1.0 / self.best_t.obs_fitness
 
-        if reward > self.max_reward:
-            self.max_reward = reward
-            self.best_Ap = rospy.get_param('/ramp/eval_weight_Ap')
-            self.best_Bp = rospy.get_param('/ramp/eval_weight_Bp')
-            self.best_L = rospy.get_param('/ramp/eval_weight_L')
+        #     reward = -obs_cost / 5.0
+
+        # if reward > self.max_reward:
+        #     self.max_reward = reward
 
         if self.done:
-            reward += 30.0 # TODO: Remove this?
+            print("Reached Goal, Getting BIG REWARD")
+            reward += 100.0 # TODO: Remove this?
 
         return reward
 
 
 
     def getOb(self):
-            self.best_Ap = rospy.get_param('/ramp/eval_weight_Ap')
-            self.best_Bp = rospy.get_param('/ramp/eval_weight_Bp')
-            self.best_L = rospy.get_param('/ramp/eval_weight_L')
+        self.best_Ap = rospy.get_param('/ramp/eval_weight_Ap')
+        self.best_Bp = rospy.get_param('/ramp/eval_weight_Bp')
+        self.best_L = rospy.get_param('/ramp/eval_weight_L')
 
         if self.best_t is None or len(self.best_t.holonomic_path.points) < 2:
             return np.array([[0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0]])
@@ -338,4 +358,39 @@ class RampEnvSipd(gym.Env):
 
 
     def getState(self):
-        return 0.0
+        Ap = rospy.get_param('/ramp/eval_weight_Ap')
+        Bp = rospy.get_param('/ramp/eval_weight_Bp')
+        L = rospy.get_param('/ramp/eval_weight_L')
+        # F = self.pedforce
+        F = rospy.get_param('/ramp/Fint')
+        dp_obs = rospy.get_param('/ramp/dp_obs')
+        min_obs_dis = rospy.get_param('/ramp/min_obs_dis')
+        return [Ap, Bp, L, F, dp_obs, min_obs_dis] 
+
+    def setLoggingData(self, reward, coes, loss, mae, q, obs_dis):
+        summary = tf.compat.v1.Summary(value=[tf.compat.v1.Summary.Value(tag="reward", simple_value=reward)])
+        self.summ_writer.add_summary(summary, global_step=self.step_i)
+
+        summary = tf.compat.v1.Summary(value=[tf.compat.v1.Summary.Value(tag="Ap", simple_value=coes[0])])
+        self.summ_writer.add_summary(summary, global_step=self.step_i)
+
+        summary = tf.compat.v1.Summary(value=[tf.compat.v1.Summary.Value(tag="Bp", simple_value=coes[1])])
+        self.summ_writer.add_summary(summary, global_step=self.step_i)
+
+        summary = tf.compat.v1.Summary(value=[tf.compat.v1.Summary.Value(tag="L", simple_value=coes[2])])
+        self.summ_writer.add_summary(summary, global_step=self.step_i)
+
+        summary = tf.compat.v1.Summary(value=[tf.compat.v1.Summary.Value(tag="Loss", simple_value=loss)])
+        self.summ_writer.add_summary(summary, global_step=self.step_i)
+
+        summary = tf.compat.v1.Summary(value=[tf.compat.v1.Summary.Value(tag="mae", simple_value=mae)])
+        self.summ_writer.add_summary(summary, global_step=self.step_i)
+
+        summary = tf.compat.v1.Summary(value=[tf.compat.v1.Summary.Value(tag="q", simple_value=q)])
+        self.summ_writer.add_summary(summary, global_step=self.step_i)
+
+        summary = tf.compat.v1.Summary(value=[tf.compat.v1.Summary.Value(tag="obs_dis", simple_value=obs_dis)])
+        self.summ_writer.add_summary(summary, global_step=self.step_i)
+
+        
+
