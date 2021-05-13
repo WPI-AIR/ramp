@@ -2,7 +2,7 @@ cmake_minimum_required(VERSION 2.8.3)
 project(trajectory_evaluation)
 
 ### Find catkin macros and libraries
-find_package(catkin REQUIRED COMPONENTS message_generation ramp_msgs roscpp roslib)
+find_package(catkin REQUIRED COMPONENTS message_generation pedsim_msgs ramp_msgs roscpp roslib)
 
 ########################################
 ### Declare ROS messages and services ##
@@ -38,7 +38,7 @@ target_link_libraries(${PROJECT_NAME} ${catkin_LIBRARIES})
 #
 ### Add cmake target dependencies of the executable/library
 ### as an example, message headers may need to be generated before nodes
-add_dependencies(${PROJECT_NAME} ramp_msgs_generate_messages_cpp)
+add_dependencies(${PROJECT_NAME} ramp_msgs_generate_messages_cpp pedsim_msgs_generate_messages_cpp)
 
 
 
