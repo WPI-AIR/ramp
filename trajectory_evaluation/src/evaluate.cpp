@@ -14,23 +14,44 @@ void Evaluate::set_robot_pose(geometry_msgs::Pose& pose_){
   // std::cout<< pose_.position.x << std::endl;
 }
 
-float Evaluate::get_dp(){
+float Evaluate::get_dp(float x, float y){
   // return sqrt(pow((robot_pose.position.x - ped_pose.position.x), 2) +
   //                      pow((robot_pose.position.y - ped_pose.position.y), 2));
-  return sqrt(pow((robot_pose.position.x - 4.5), 2) +
-                     pow((robot_pose.position.y - 4.5), 2));
+  return sqrt(pow((robot_pose.position.x - x), 2) +
+                     pow((robot_pose.position.y - y), 2));
   // std::cout<< dp << std::endl;
 }
 
-void Evaluate::get_np(){
-  float dp = get_dp();
+geometry_msgs::Point Evaluate::get_np(float x, float y){
+  float dp = get_dp(x, y);
 
-  np_.x = (robot_pose.position.x - ped_pose.position.x)/dp;
-  np_.y = (robot_pose.position.y - ped_pose.position.y)/dp;
+  geometry_msgs::Point np; 
+  np.x = (robot_pose.position.x - ped_pose.position.x)/dp;
+  np.y = (robot_pose.position.y - ped_pose.position.y)/dp;
   
+  return np;
   // return sqrt(pow((np_.x), 2) +
   //                      pow((np_.y), 2));
   // std::cout<< np_.x << std::endl;
+}
+
+float Evaluate::getMinObsDistance(float x, float y, trajectory_msgs::JointTrajectory& Traj){
+  float d_min = 100;
+  float dist = 100;
+  for(int i=0; i<Traj.points.size(); i++){
+    float tx = Traj.points[i].positions[0];
+    float ty = Traj.points[i].positions[1];
+
+    dist = sqrt(pow((tx - x), 2) +
+                     pow((ty - y), 2));
+    
+    if(dist < d_min)
+    {
+      d_min = dist;
+    }
+  }
+
+  return d_min;
 }
 
 void Evaluate::perform(ramp_msgs::EvaluationRequest& req, ramp_msgs::EvaluationResponse& res)
@@ -328,35 +349,56 @@ void Evaluate::performFitness(ramp_msgs::RampTrajectory& trj, const double& offs
     double cost = zero;
 
     // Get Euclidean distance of the ped from the robot
-    float dp = get_dp();
-    float rp = 2.0;
-    get_np();
+    float rp = 1.0;
     result = 100000; 
 
-    std::vector<double> goal {5, 5, 0.784};
+    // float obs1x = 0.5;
+    // float obs1y = 4.5;
+    float obs1x = ped_pose.position.x;
+    float obs1y = ped_pose.position.y;
+    float obs2x = 2.5;
+    float obs2y = 4.5;
+
+    std::vector<double> goal {5, 5, 0.784}; // initialization
+    
     ros::param::get("robot_info/goal", goal);
+    
     float ex = goal[0] - robot_pose.position.x;
     float ey = goal[1] - robot_pose.position.y;
-    float cos_phi = - (ex*np_.x + ey*np_.y)/sqrt(ex*ex + ey*ey); 
 
-    double omega = L_weight_ + (1-L_weight_)*(1 + cos_phi)/2; // = 1 - (0.5to1)L
+    geometry_msgs::Point np1 = get_np(obs1x, obs1y);
+    float dp1 = getMinObsDistance(obs1x, obs1y, trj.trajectory);
+    float cos_phi_1 = - (ex*np1.x + ey*np1.y)/sqrt(ex*ex + ey*ey); 
+    double omega_1 = L_weight_ + (1-L_weight_)*(1 + cos_phi_1)/2; // = 1 - (0.5to1)L
+    float Fx_1 = Ap_weight_*exp((rp- dp1)/(Bp_weight_)) * omega_1 *(-np1.x);
+    float Fy_1 = Ap_weight_*exp((rp- dp1)/(Bp_weight_)) * omega_1 *(-np1.y);
 
-    // float Fx = Ap_weight_*exp((rp- dp)/(Bp_weight_)) * omega *(-np_.x);
-    // float Fy = Ap_weight_*exp((rp- dp)/(Bp_weight_)) * omega *(-np_.y);
+    geometry_msgs::Point np2 = get_np(obs2x, obs2y);
+    float dp2 = getMinObsDistance(obs2x, obs2y, trj.trajectory);
+    float cos_phi_2 = - (ex*np2.x + ey*np2.y)/sqrt(ex*ex + ey*ey); 
+    double omega_2 = L_weight_ + (1-L_weight_)*(1 + cos_phi_2)/2; // = 1 - (0.5to1)L
+    float Fx_2 = Ap_weight_*exp((rp- dp2)/(Bp_weight_)) * omega_2 *(-np2.x);
+    float Fy_2 = Ap_weight_*exp((rp- dp2)/(Bp_weight_)) * omega_2 *(-np2.y);
 
-    float Fx = Ap_weight_*exp((rp- min_obs_dis)/(Bp_weight_)) * omega *(-np_.x);
-    float Fy = Ap_weight_*exp((rp- min_obs_dis)/(Bp_weight_)) * omega *(-np_.y);
+    // std::cout << "omega1: " << omega_1 << " np1.x: " << np1.x << "np1.y" << np2.x << std::endl;
+    // std::cout << "dp1: " << dp1 << " dp2: " << dp2 << " min_obs_dis: " << min_obs_dis << std::endl;
 
-    F += 10*sqrt(pow((Fx), 2) + pow((Fy), 2));
-    if (F>10)
-      F = 10;
+    float F_max = 10;
+    float F1 = F_max*sqrt(pow((Fx_1), 2) + pow((Fy_1), 2));
+    float F2 = 0*F_max*sqrt(pow((Fx_2), 2) + pow((Fy_2), 2));
+    
+    F += F1;
+    F += F2;
+
+    if (F>F_max)
+      F = F_max;
 
     ros::param::set("/ramp/Fint", F);
     ros::param::set("/ramp/dp_obs", dp);
 
-    std::cout << "dp : " << dp << std::endl;  
+    // std::cout << "dp : " << dp << std::endl;  
     // F += Ap_weight_*exp((rp- (dp_weight_* dp))/(Bp_weight_* Bp)) * omega *(-np);
-    std::cout << "T_weight_ * T: " << T_weight_ * T << " A_weight_ * A: " << A_weight_ * A << " F: " << F << " Ap_weight_: " << Ap_weight_ << std::endl;  
+    // std::cout << "T_cost: " << T_weight_ * T  << " F: " << F << " F1: " << F1 << " F2: " << F2 << std::endl;  
     cost += T_weight_ * T + A_weight_ * A + 0*D_weight_ * _1_D + F;
     result = 1.0 / cost;
 

@@ -1,6 +1,7 @@
 #ifndef EVALUATE_H
 #define EVALUATE_H
 #include "ramp_msgs/EvaluationSrv.h"
+#include "ramp_msgs/RampTrajectory.h"
 #include "euclidean_distance.h"
 #include "orientation.h"
 #include "collision_detection.h"
@@ -9,7 +10,7 @@
 #include "nav_msgs/Odometry.h"
 #include "geometry_msgs/Pose.h"
 #include "geometry_msgs/Point.h"
-
+#include "trajectory_msgs/JointTrajectory.h"
 
 
 
@@ -22,8 +23,12 @@ class Evaluate {
     void performFeasibility(ramp_msgs::EvaluationRequest& er);
     void performFitness(ramp_msgs::RampTrajectory& trj, const double& offset, double& result, double& min_obs_dis, ramp_msgs::EvaluationResponse& res);
     void pedsimParams(const ramp_msgs::PedSim& msg);
-    float get_dp();
-    void get_np();
+    float get_dp(float x, float y);
+    geometry_msgs::Point get_np(float x, float y);
+
+    
+    trajectory_msgs::JointTrajectory bestTraj;
+    float getMinObsDistance(float x, float y, trajectory_msgs::JointTrajectory& Traj);
 
     geometry_msgs::Pose robot_pose;
     geometry_msgs::Pose ped_pose;

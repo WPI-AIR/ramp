@@ -43,7 +43,7 @@ Agent::Agent() {
   Ped::Tagent::setForceFactorObstacle(CONFIG.forceObstacle);
   forceSigmaObstacle = CONFIG.sigmaObstacle;
   Ped::Tagent::setForceFactorSocial(CONFIG.forceSocial);
-  Ped::Tagent::setVmax(0.75);
+  Ped::Tagent::setVmax(0.5);
   // waypoints
   currentDestination = nullptr;
   waypointplanner = nullptr;

@@ -246,16 +246,38 @@ void Planner::sensingCycleCallback(const ramp_msgs::ObstacleList& msg)
   // obs1x = boost::algorithm::clamp(obs1x, 0.0, x_max);
   // obs1y = x_max - obs1x;
   ramp_msgs::Obstacle obs1;
-  // obs1.ob_ms.positions.push_back(ped_pose.position.x);
-  // obs1.ob_ms.positions.push_back(ped_pose.position.y);
-  obs1.ob_ms.positions.push_back(4.5);
-  obs1.ob_ms.positions.push_back(4.5);
+  ramp_msgs::Obstacle obs2;
+
+  obs1.ob_ms.positions.push_back(ped_pose.position.x);
+  obs1.ob_ms.positions.push_back(ped_pose.position.y);
+  // obs1.ob_ms.positions.push_back(0.5);
+  // obs1.ob_ms.positions.push_back(4.5);
   obs1.ob_ms.positions.push_back(0.0);
   obs1.ob_ms.velocities.push_back(0.0);
   obs1.ob_ms.velocities.push_back(0.0);
   obs1.ob_ms.velocities.push_back(0.0);
   obs1.radius = obs1r;
   obs_msg.obstacles.push_back(obs1);
+  
+  // obs1.ob_ms.positions.push_back(2.5);
+  // obs1.ob_ms.positions.push_back(4.5);
+  // obs1.ob_ms.positions.push_back(0.0);
+  // obs1.ob_ms.velocities.push_back(0.0);
+  // obs1.ob_ms.velocities.push_back(0.0);
+  // obs1.ob_ms.velocities.push_back(0.0);
+  // obs1.radius = obs1r;
+  // obs_msg.obstacles.push_back(obs1);
+
+  // obs2.ob_ms.positions.push_back(2.5);
+  // obs2.ob_ms.positions.push_back(4.5);
+  // obs2.ob_ms.positions.push_back(0.0);
+  // obs2.ob_ms.velocities.push_back(0.0);
+  // obs2.ob_ms.velocities.push_back(0.0);
+  // obs2.ob_ms.velocities.push_back(0.0);
+  // obs2.radius = obs2r;
+  // obs_msg.obstacles.push_back(obs2);
+
+
   // if (obs1x >= x_max) {
   //   step1 = -fabs(step1);
   // } else if (obs1x <= 0.0) {
@@ -4027,14 +4049,14 @@ void Planner::buildLineList(const RampTrajectory& trajec, int id, visualization_
     result.color.r = 0;
     result.color.g = 0;
     result.color.b = 1;
-    result.scale.x = 0.01;
+    result.scale.x = 0.025;
   }
   else
   {
     result.color.r = 1;
     result.color.g = 0;
     result.color.b = 0;
-    result.scale.x = 0.01;
+    result.scale.x = 0.025;
   }
   // trajec may be an obstacle trajectory which has no points in the path member
   // if(trajec.msg_.holonomic_path.points.size() > 0 && trajec.equals(population_.getBest()))

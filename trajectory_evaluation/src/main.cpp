@@ -5,10 +5,12 @@
 #include "evaluate.h"
 #include "tf/transform_datatypes.h"
 #include "ramp_msgs/Obstacle.h"
+#include "trajectory_msgs/JointTrajectory.h"
 #include <ros/package.h>
+#include "pedsim_msgs/AgentStates.h"
+
 using namespace std::chrono;
 
-#include "pedsim_msgs/AgentStates.h"
 Evaluate ev;
 Utility u;
 bool received_ob = false;
@@ -27,6 +29,10 @@ void pedSimCallback(const pedsim_msgs::AgentStates::ConstPtr msg){
 void robotCallback(const nav_msgs::Odometry::ConstPtr msg){
   geometry_msgs::Pose robotPose = msg->pose.pose;
   ev.set_robot_pose(robotPose);
+}
+
+void bestTrajCallback(ramp_msgs::RampTrajectory::ConstPtr msg){
+    ev.bestTraj = msg->trajectory;
 }
 
 /** Srv callback to evaluate a trajectory */
@@ -274,6 +280,7 @@ int main(int argc, char** argv) {
 
   // Subscribe Pedsim positions 
   ros::Subscriber pedSimSub = handle.subscribe("/pedsim_simulator/simulated_agents", 1000, pedSimCallback);
+  ros::Subscriber bestTrajSub = handle.subscribe("/bestTrajec", 1000, bestTrajCallback);
   ros::Subscriber robotSub = handle.subscribe("/odom", 1000, robotCallback);
 
   /*

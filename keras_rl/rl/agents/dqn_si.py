@@ -338,6 +338,7 @@ class DQNAgentSi(DQNAgent):
         did_abort = False
         coes = []
         coes_for_plot = []
+        episode_min_obs_dis = []
 
         try:
             while not rospy.core.is_shutdown() and self.step < nb_steps:
@@ -445,6 +446,15 @@ class DQNAgentSi(DQNAgent):
                     'coes': coes
                 }
                 callbacks.on_step_end(episode_step, step_logs)
+                
+                if episode_step==0: 
+                    min_obs_dis_start = coes[5]
+                    episode_min_obs_dis.append(coes[5])
+                    plt.figure(88)
+                    plt.plot(episode_min_obs_dis)
+                    plt.xlabel('Episode')
+                    plt.ylabel('min_obs_dis_start')
+
                 episode_step += 1
                 self.step += 1
                 self.policy.change_tau(-0.0004)
@@ -501,6 +511,7 @@ class DQNAgentSi(DQNAgent):
                         'nb_episode_steps': episode_step,
                         'nb_steps': self.step,
                         'coes': env.getState(),
+                        'min_obs_dis_start': min_obs_dis_start
                     }
                     callbacks.on_episode_end(episode, episode_logs)
                     if verbose == 1:
@@ -707,6 +718,9 @@ class DQNAgentSi(DQNAgent):
         self._on_test_begin()
         callbacks.on_train_begin()
         # test_init_state = 0.0
+        episode_min_obs_dis = []
+        episode_time = []
+        ER = []
         for episode in range(nb_episodes):
             callbacks.on_episode_begin(episode)
             episode_reward = 0.
@@ -745,6 +759,7 @@ class DQNAgentSi(DQNAgent):
             # Run the episode until we're done.
             done = False
             beyond_max_epi_steps = False
+            
             while not done and not beyond_max_epi_steps:
                 callbacks.on_step_begin(episode_step, self.model)
 
@@ -778,6 +793,7 @@ class DQNAgentSi(DQNAgent):
                 self.backwardSip(reward, observation, done)
                 episode_reward += reward
 
+
                 step_logs = {
                     'action': action,
                     'observation': observation,
@@ -786,9 +802,24 @@ class DQNAgentSi(DQNAgent):
                     'info': accumulated_info,
                 }
                 callbacks.on_step_end(episode_step, step_logs)
+
+                coes = env.getState()
+                # print("episode_step: ", episode_step)
+                if episode_step==0: 
+                    print("-------------------- PLOT -------------------")
+                    min_obs_dis_start = coes[5]
+                    episode_min_obs_dis.append(coes[5])
+                    plt.figure(88)
+                    plt.plot(episode_min_obs_dis, linewidth=2, color=[0, 0.4470, 0.7410])
+                    plt.xlabel('Episode')
+                    plt.ylabel('min obstacle distance (m)')
+
+
                 episode_step += 1
                 self.step += 1
 
+            episode_time.append(episode_step)
+            ER.append(episode_reward)
             # Report end of episode.
             episode_logs = {
                 'episode_reward': episode_reward,
@@ -799,6 +830,19 @@ class DQNAgentSi(DQNAgent):
             callbacks.on_episode_end(episode, episode_logs)
             print('test_init_state: {},\ttest_final_state: {}'.format(test_init_state, env.getState()))
             # test_init_state += 0.1
+        
+        # Plot time in terms of steps
+        plt.figure(99)
+        plt.title('Execution Time in no. of Steps')
+        plt.plot(episode_time, linewidth=2, color=[0, 0.4470, 0.7410])
+        plt.ylabel('No. of steps in Episode')
+        plt.xlabel('Episode')
+
+        plt.figure(1)
+        plt.title('Total Episode Reward')
+        plt.plot(ER, linewidth=2, color=[0, 0.4470, 0.7410])
+        plt.ylabel('Episodic Reward')
+        plt.xlabel('Episode')
 
         callbacks.on_train_end()
         self._on_test_end()

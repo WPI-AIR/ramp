@@ -109,9 +109,8 @@ dqn.compile(Adam(lr=1e-3), metrics=['mae'])
 
 # Load weights if needed. Put this after compiling may be better.
 # dqn.load_weights_sip("dqn_ramp_sipd_weights.h5f")
-dqn.model.load_weights("/home/sapanostic/catkin_ws/src/ramp/ramp_rlpara/scripts/dqn_ramp_sipd_weights_model.h5f")
-dqn.target_model.load_weights("/home/sapanostic/catkin_ws/src/ramp/ramp_rlpara/scripts/dqn_ramp_sipd_weights_target.h5f")
-
+dqn.model.load_weights("/home/sapanostic/catkin_ws/src/ramp/ramp_rlpara/scripts/1m/raw_data/dqn_ramp_sipd_weights_model.h5f")
+dqn.target_model.load_weights("/home/sapanostic/catkin_ws/src/ramp/ramp_rlpara/scripts/1m/raw_data/dqn_ramp_sipd_weights_target.h5f")
 
 
 # Okay, now it's time to learn something! We visualize the training here for show, but this
@@ -119,9 +118,9 @@ dqn.target_model.load_weights("/home/sapanostic/catkin_ws/src/ramp/ramp_rlpara/s
 # Ctrl + C.
 log_interval = 1000
 nb_max_episode_steps = None
-dqn.fitSip(env, nb_steps=10000, log_interval=log_interval,
-           nb_max_episode_steps=nb_max_episode_steps, verbose=2,
-           file_dir=file_dir, logger=coarse_logger, epi_logger=epi_logger)
+# dqn.fitSip(env, nb_steps=5000, log_interval=log_interval,
+#            nb_max_episode_steps=nb_max_episode_steps, verbose=2,
+#            file_dir=file_dir, logger=coarse_logger, epi_logger=epi_logger)
 
 # dqn.fitSip(env, nb_steps=5000000, log_interval=log_interval,
 #            nb_max_episode_steps=nb_max_episode_steps, verbose=0,
@@ -134,7 +133,7 @@ dqn.save_weights_sip(file_dir + 'dqn_{}_weights.h5f'.format(env.name), overwrite
 
 
 # # Finally, evaluate our algorithm for 5 episodes.
-# dqn.testSip(env, nb_episodes=11, visualize=False, nb_max_episode_steps=3000)
+dqn.testSip(env, nb_episodes=10, visualize=False, nb_max_episode_steps=3000)
 
 plt.show()
 

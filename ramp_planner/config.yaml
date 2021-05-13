@@ -1,6 +1,6 @@
 is_offline_learning: false
 
-population_size: 25
+population_size: 20
 
 sub_populations: false 
 
@@ -24,7 +24,7 @@ pop_traj_type: 0 #0=holonomic, 1=hybrid
 
 fixed_control_cycle_rate: 1.2 # second
 
-sensing_cycle_rate: 100
+sensing_cycle_rate: 10
 
 is_same_thre: 0.3
 

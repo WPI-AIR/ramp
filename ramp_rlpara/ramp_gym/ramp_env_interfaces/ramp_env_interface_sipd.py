@@ -70,7 +70,7 @@ class RampEnvSipd(gym.Env):
         self.start_in_step = False
         self.max_reward = -999.9
 
-        self.a0 = 1.0
+        self.a0 = 0.1
         self.a1 = 2.0
         self.b0 = 0.1
         self.b1 = 1.0
@@ -140,7 +140,7 @@ class RampEnvSipd(gym.Env):
 
             cur_time = rospy.get_rostime()
             has_waited_for = cur_time.to_sec() - start_waiting_time.to_sec()
-            if has_waited_for >= 40.0: # overtime
+            if has_waited_for >= 100.0: # overtime
                 print("Long time no response!")
                 print("Wait environment get ready......")
 
@@ -156,7 +156,7 @@ class RampEnvSipd(gym.Env):
                 print("Wait plan complete......")
 
         print("A plan completes!")
-        time.sleep(0.1)
+        # time.sleep(0.1)
         self.best_t = self.best_traj # Store
         if self.this_exe_info is not None:
             self.done = self.this_exe_info.done
@@ -222,12 +222,7 @@ class RampEnvSipd(gym.Env):
         ## set the coefficients of RAMP
         Ap = rospy.get_param('/ramp/eval_weight_Ap')
         Bp = rospy.get_param('/ramp/eval_weight_Bp')
-        L = rospy.get_param('/ramp/eval_weight_L')
-
-        if ((Ap+dAp)<=0):
-            Ap = dAp
-        if ((Bp+dBp)<=0):
-            Bp = dBp    
+        L = rospy.get_param('/ramp/eval_weight_L')  
         
         self.setState(Ap+dAp, Bp+dBp, L+dL)
         self.step_i += 1
