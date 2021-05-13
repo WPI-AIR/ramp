@@ -64,6 +64,7 @@ class MobileRobot
 
   tf::StampedTransform tf_global_odom_;
   double tf_rot_;
+  float max_lin_speed; 
 
   private:
 
@@ -95,7 +96,6 @@ class MobileRobot
   ramp_msgs::MotionState    prev_motion_state_; 
   ros::Time                 prev_t_;
   ros::Duration             t_immiColl_;
-
 
 };
 
