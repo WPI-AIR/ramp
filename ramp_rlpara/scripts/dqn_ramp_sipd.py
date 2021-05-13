@@ -38,7 +38,7 @@ os.system('mkdir -p ' + file_dir)
 from f_logger import RampRlLogger
 ## Initialize logger
 coarse_logger = RampRlLogger(file_dir + "dqn_sipd.csv",
-                             ['plan#', 'Ap', 'Bp', 'dp', 'L', 'K'
+                             ['plan#', 'Ap', 'Bp', 'L','F','dp_obs', 'min_obs_dis',
                               'plan_reward', 'plan_time', 'obs_dis',
                               'loss', 'mae', 'mean_q'])
 
@@ -50,8 +50,9 @@ epi_logger = RampRlLogger(file_dir + "dqn_epi_sipd.csv",
 
 
 # Seed
-seed_str = input("Enter a seed for random generator (must be a integer): ")
-seed_int = int(seed_str)
+# seed_str = input("Enter a seed for random generator (must be a integer): ")
+# seed_int = int(seed_str)
+seed_int = 0
 np.random.seed(seed_int) # numpy
 prng.seed(seed_int) # space
 
@@ -78,7 +79,7 @@ nb_actions = env.action_space.n
 
 # Next, we build a very simple model Q(s,a).
 model = Sequential()
-model.add(LSTM(16, input_shape=(1,4)))
+model.add(LSTM(16, input_shape=(1,10)))
 # model.add(Flatten(input_shape=(1,) + env.observation_space.shape)) # s is (x, y, coe)
 model.add(Dense(16))
 model.add(Activation('relu'))
@@ -107,9 +108,9 @@ dqn.compile(Adam(lr=1e-3), metrics=['mae'])
 
 
 # Load weights if needed. Put this after compiling may be better.
-# dqn.load_weights_sip("~/catkin_ws/data/ramp/ramp_rlpara/dqn_ramp_sipd/2018-02-17_14:05:42/raw_data/58/" +
-#                      "dqn_{}_weights.h5f".format(env.name))
-
+# dqn.load_weights_sip("dqn_ramp_sipd_weights.h5f")
+dqn.model.load_weights("/home/sapanostic/catkin_ws/src/ramp/ramp_rlpara/scripts/1m/raw_data/dqn_ramp_sipd_weights_model.h5f")
+dqn.target_model.load_weights("/home/sapanostic/catkin_ws/src/ramp/ramp_rlpara/scripts/1m/raw_data/dqn_ramp_sipd_weights_target.h5f")
 
 
 # Okay, now it's time to learn something! We visualize the training here for show, but this
@@ -117,19 +118,24 @@ dqn.compile(Adam(lr=1e-3), metrics=['mae'])
 # Ctrl + C.
 log_interval = 1000
 nb_max_episode_steps = None
-dqn.fitSip(env, nb_steps=5000000, log_interval=log_interval,
-           nb_max_episode_steps=nb_max_episode_steps, verbose=2,
-           file_dir=file_dir, logger=coarse_logger, epi_logger=epi_logger)
+# dqn.fitSip(env, nb_steps=5000, log_interval=log_interval,
+#            nb_max_episode_steps=nb_max_episode_steps, verbose=2,
+#            file_dir=file_dir, logger=coarse_logger, epi_logger=epi_logger)
 
-
+# dqn.fitSip(env, nb_steps=5000000, log_interval=log_interval,
+#            nb_max_episode_steps=nb_max_episode_steps, verbose=0,
+#            file_dir=file_dir)
 
 # # After training is done, we save the final weights.
 dqn.save_weights_sip(file_dir + 'dqn_{}_weights.h5f'.format(env.name), overwrite = True)
-coarse_logger.close()
+# coarse_logger.close()
 
 
 
 # # Finally, evaluate our algorithm for 5 episodes.
-# dqn.testSip(env, nb_episodes=11, visualize=False, nb_max_episode_steps=3000)
+dqn.testSip(env, nb_episodes=10, visualize=False, nb_max_episode_steps=3000)
 
 plt.show()
+
+while(1):
+	print("waiting for user to close the program")
